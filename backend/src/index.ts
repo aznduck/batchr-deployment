@@ -12,7 +12,7 @@ import { seedAdminData } from "./utils/seedAdminData";
 dotenv.config();
 const app = express();
 
-app.set("trust proxy", 1);
+app.set("trust proxy", true);
 
 const allowedOrigins = [
   "http://localhost:5173",
@@ -47,12 +47,10 @@ app.use(express.json());
 app.use(
   session({
     name: "batchr.sid",
-    secret: process.env.SESSION_SECRET || "keyboard cat",
+    secret: process.env.SESSION_SECRET!,
     resave: false,
     saveUninitialized: false,
-    store: MongoStore.create({
-      mongoUrl: process.env.MONGO_URI!,
-    }),
+    store: MongoStore.create({ mongoUrl: process.env.MONGO_URI! }),
     cookie: {
       maxAge: 1000 * 60 * 60 * 24, // 1 day
       httpOnly: true,
@@ -87,7 +85,7 @@ mongoose
     }
 
     app.listen(process.env.PORT, () =>
-      console.log(`🚀 Backend running at http://localhost:${process.env.PORT}`)
+      console.log(`🚀 Backend running at ${process.env.PORT}`)
     );
   })
   .catch((err) => console.error("MongoDB connection error:", err));

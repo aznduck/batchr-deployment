@@ -50,9 +50,15 @@ app.use(
     store: MongoStore.create({
       mongoUrl: process.env.MONGO_URI!,
     }),
-    cookie: { maxAge: 1000 * 60 * 60 * 24 },
+    cookie: {
+      maxAge: 1000 * 60 * 60 * 24, // 1 day
+      httpOnly: true,
+      sameSite: "none",      // required for cross-origin cookies
+      secure: true           // required for cross-origin cookies on HTTPS
+    },
   })
 );
+
 
 app.use((req, res, next) => {
   console.log("Session data:", req.session);

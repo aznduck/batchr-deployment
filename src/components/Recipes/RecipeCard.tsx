@@ -47,18 +47,17 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
     <div className={cn("perspective-1000 h-full", className)}>
       <div
         className={cn(
-          "relative w-full h-full transition-transform duration-500 transform-style-3d",
+          "relative w-full h-full transition-transform duration-500 preserve-3d cursor-pointer",
           flipped ? "rotate-y-180" : ""
         )}
+        onClick={toggleFlip}
       >
         {/* Front Side - Ingredients */}
         <Card
           className={cn(
-            "absolute w-full h-full backface-hidden transition-all",
-            `bg-${color}/40 border-${color}/60`,
-            !flipped ? "pointer-events-auto" : "pointer-events-none"
+            "absolute w-full h-full backface-hidden hover-scale",
+            `bg-${color}/40 border-${color}/60`
           )}
-          onClick={flipped ? undefined : toggleFlip}
         >
           <CardHeader className="pb-2">
             <CardTitle className={`text-${color}-foreground`}>
@@ -95,6 +94,7 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
               variant="ghost"
               size="sm"
               className={`text-xs p-1 h-6 text-${color}-foreground/70 hover:text-${color}-foreground hover:bg-${color}/60`}
+              onClick={toggleFlip}
             >
               <History size={14} className="mr-1" /> Batch History
             </Button>
@@ -104,11 +104,9 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
         {/* Back Side - Batch History */}
         <Card
           className={cn(
-            "absolute w-full h-full backface-hidden transition-all rotate-y-180",
-            `bg-${color}/40 border-${color}/60`,
-            flipped ? "pointer-events-auto" : "pointer-events-none"
+            "absolute w-full h-full backface-hidden rotate-y-180 hover-scale",
+            `bg-${color}/40 border-${color}/60`
           )}
-          onClick={flipped ? toggleFlip : undefined}
         >
           <CardHeader className="pb-2">
             <CardTitle className={`text-${color}-foreground`}>
@@ -152,6 +150,7 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
               variant="ghost"
               size="sm"
               className={`text-xs p-1 h-6 text-${color}-foreground/70 hover:text-${color}-foreground hover:bg-${color}/60`}
+              onClick={toggleFlip}
             >
               <Info size={14} className="mr-1" /> Ingredients
             </Button>

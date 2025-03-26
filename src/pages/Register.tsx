@@ -1,11 +1,11 @@
 import React from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useNavigate, Link } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { toast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { useForm } from "react-hook-form";
-import { toast } from "@/components/ui/use-toast";
+import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 
 interface RegisterFormData {
   username: string;
@@ -13,32 +13,34 @@ interface RegisterFormData {
 }
 
 const Register = () => {
-  const navigate = useNavigate();
   const { register, handleSubmit } = useForm<RegisterFormData>();
+  const navigate = useNavigate();
 
   const onSubmit = async (data: RegisterFormData) => {
     try {
-      const response = await fetch("http://localhost:5001/api/auth/register", {
+      const res = await fetch("http://localhost:5001/api/auth/register", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include", // optional here but safe to include
         body: JSON.stringify(data),
       });
 
-      if (!response.ok) {
-        throw new Error("Registration failed");
+      const json = await res.json();
+
+      if (!res.ok) {
+        throw new Error(json.message || "Registration failed");
       }
 
-      toast({
-        title: "Success",
-        description: "Registration successful! Please log in.",
-      });
+      toast({ title: "Success", description: "Registered successfully! Please log in." });
       navigate("/login");
-    } catch (error) {
-      console.error("Registration failed:", error);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Something went wrong";
       toast({
         variant: "destructive",
-        title: "Error",
-        description: "Registration failed. Please try again.",
+        title: "Registration failed",
+        description: errorMessage,
       });
     }
   };
@@ -46,20 +48,16 @@ const Register = () => {
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">
       <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl text-center">Create an account</CardTitle>
+        <CardHeader>
+          <CardTitle className="text-2xl text-center">Create Account</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="space-y-2">
+            <div>
               <Label htmlFor="username">Username</Label>
-              <Input
-                id="username"
-                type="text"
-                {...register("username", { required: true })}
-              />
+              <Input id="username" {...register("username", { required: true })} />
             </div>
-            <div className="space-y-2">
+            <div>
               <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
@@ -68,7 +66,7 @@ const Register = () => {
               />
             </div>
             <Button type="submit" className="w-full">
-              Create Account
+              Register
             </Button>
           </form>
           <div className="mt-4 text-center text-sm">

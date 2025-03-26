@@ -1,11 +1,9 @@
-
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Layout } from "@/components/Layout";
 import Stats from "@/components/Dashboard/Stats";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { getIngredientsByUrgency, ingredients, recipes } from "@/lib/data";
 import { CircularGauge } from "@/components/ui/CircularGauge";
 import { BarChart, Package, ShoppingCart, UtensilsCrossed } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
@@ -19,12 +17,55 @@ import {
   CartesianGrid,
 } from "recharts";
 
-const Index = () => {
-  const lowStockIngredients = getIngredientsByUrgency().filter(
-    (ingredient) => ingredient.stock < ingredient.threshold
-  ).slice(0, 3);
+interface Ingredient {
+  _id: string;
+  name: string;
+  stock: number;
+  unit: string;
+  threshold: number;
+  history: { date: string; level: number }[];
+}
 
-  // Create data for recipe production chart
+interface Recipe {
+  _id: string;
+  name: string;
+  ingredients: { ingredientId: string; amount: number }[];
+  batches: {
+    date: string;
+    supervisor: string;
+    quantity: number;
+    notes?: string;
+  }[];
+}
+
+const Index = () => {
+  const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [ingRes, recRes] = await Promise.all([
+          fetch("http://localhost:5001/api/ingredients", { credentials: "include" }),
+          fetch("http://localhost:5001/api/recipes", { credentials: "include" }),
+        ]);
+
+        const [ingData, recData] = await Promise.all([ingRes.json(), recRes.json()]);
+        setIngredients(ingData);
+        setRecipes(recData);
+      } catch (error) {
+        console.error("Failed to load dashboard data:", error);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const lowStockIngredients = ingredients
+    .filter((ingredient) => ingredient.stock < ingredient.threshold)
+    .sort((a, b) => (a.stock / a.threshold) - (b.stock / b.threshold))
+    .slice(0, 3);
+
   const recipeProductionData = recipes.map((recipe) => {
     const totalProduction = recipe.batches.reduce(
       (sum, batch) => sum + batch.quantity,
@@ -107,7 +148,7 @@ const Index = () => {
                 <div className="space-y-4">
                   {lowStockIngredients.map((ingredient) => (
                     <div
-                      key={ingredient.id}
+                      key={ingredient._id}
                       className="flex items-center justify-between"
                     >
                       <div>
@@ -151,7 +192,7 @@ const Index = () => {
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                 {recipes.slice(0, 3).map((recipe) => (
                   <div
-                    key={recipe.id}
+                    key={recipe._id}
                     className="p-3 rounded-lg border bg-muted/50 hover:bg-muted transition-colors flex flex-col gap-1"
                   >
                     <p className="font-medium text-sm">{recipe.name}</p>

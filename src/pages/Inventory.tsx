@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,17 +12,34 @@ import {
 } from "@/components/ui/select";
 import { IngredientCard } from "@/components/Inventory/IngredientCard";
 import { AddIngredientModal } from "@/components/Inventory/AddIngredientModal";
-import { Ingredient, getIngredientsByUrgency, ingredients as initialIngredients } from "@/lib/data";
 import { FilterX, Plus, Search, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { Ingredient } from "@/lib/data";
 
 const Inventory = () => {
+  const initialIngredients: Ingredient[] = []; // define an empty array or populate with initial data
   const [ingredients, setIngredients] = useState<Ingredient[]>(initialIngredients);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("urgency");
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editingIngredient, setEditingIngredient] = useState<Ingredient | null>(null);
+
+  useEffect(() => {
+    const fetchIngredients = async () => {
+      try {
+        const res = await fetch("http://localhost:5001/api/ingredients", {
+          credentials: "include",
+        });
+        const data = await res.json();
+        setIngredients(data);
+      } catch (err) {
+        console.error("Failed to fetch ingredients", err);
+      }
+    };
+  
+    fetchIngredients();
+  }, []);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
@@ -32,7 +49,7 @@ const Inventory = () => {
     setSortBy(value);
   };
 
-  const handleAddIngredient = (values: any) => {
+  const handleAddIngredient = (values) => {
     const newIngredient: Ingredient = {
       id: (ingredients.length + 1).toString(),
       name: values.name,

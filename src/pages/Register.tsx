@@ -1,3 +1,4 @@
+// src/pages/Register.tsx
 import React from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -5,7 +6,8 @@ import { toast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAuth } from "@/context/AuthContext";
 
 interface RegisterFormData {
   username: string;
@@ -14,27 +16,25 @@ interface RegisterFormData {
 
 const Register = () => {
   const { register, handleSubmit } = useForm<RegisterFormData>();
+  const { login } = useAuth();
   const navigate = useNavigate();
 
   const onSubmit = async (data: RegisterFormData) => {
     try {
       const res = await fetch("http://localhost:5001/api/auth/register", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include", // optional here but safe to include
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(data),
       });
 
       const json = await res.json();
 
-      if (!res.ok) {
-        throw new Error(json.message || "Registration failed");
-      }
+      if (!res.ok) throw new Error(json.message || "Registration failed");
 
-      toast({ title: "Success", description: "Registered successfully! Please log in." });
-      navigate("/login");
+      login(data.username); // Auto-login after register
+      toast({ title: "Success", description: "Account created and logged in!" });
+      navigate("/");
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Something went wrong";
       toast({
@@ -66,7 +66,7 @@ const Register = () => {
               />
             </div>
             <Button type="submit" className="w-full">
-              Register
+              Sign Up
             </Button>
           </form>
           <div className="mt-4 text-center text-sm">

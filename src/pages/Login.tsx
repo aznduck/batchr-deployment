@@ -1,3 +1,4 @@
+// src/pages/Login.tsx
 import React from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -5,7 +6,8 @@ import { toast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAuth } from "@/context/AuthContext";
 
 interface LoginFormData {
   username: string;
@@ -14,27 +16,25 @@ interface LoginFormData {
 
 const Login = () => {
   const { register, handleSubmit } = useForm<LoginFormData>();
+  const { login } = useAuth();
   const navigate = useNavigate();
 
   const onSubmit = async (data: LoginFormData) => {
     try {
       const res = await fetch("http://localhost:5001/api/auth/login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include", // ✅ required to send cookies
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(data),
       });
 
       const json = await res.json();
 
-      if (!res.ok) {
-        throw new Error(json.message || "Login failed");
-      }
+      if (!res.ok) throw new Error(json.message || "Login failed");
 
+      login(data.username); // Set username in context
       toast({ title: "Success", description: "Logged in successfully!" });
-      navigate("/"); // ✅ Redirect on success
+      navigate("/");
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Something went wrong";
       toast({

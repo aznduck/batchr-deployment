@@ -1,9 +1,8 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { CardHeader, CardContent, CardFooter, Card, CardTitle } from "@/components/ui/card";
-import { recipes, Recipe } from "@/lib/data";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -24,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Recipe } from "@/lib/data";
 
 interface ProductionEntry {
   date: Date;
@@ -39,6 +39,16 @@ const Production = () => {
   const [quantity, setQuantity] = useState<string>("50");
   const [notes, setNotes] = useState<string>("");
   const [supervisor, setSupervisor] = useState<string>("");
+
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
+
+  useEffect(() => {
+    fetch("http://localhost:5001/api/recipes", { credentials: "include" })
+      .then((res) => res.json())
+      .then(setRecipes)
+      .catch((err) => console.error("Failed to fetch recipes", err));
+  }, []);
+
   
   const [productionLog, setProductionLog] = useState<ProductionEntry[]>([
     {

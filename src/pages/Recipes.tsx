@@ -1,17 +1,35 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RecipeCard } from "@/components/Recipes/RecipeCard";
-import { Recipe, recipes as initialRecipes } from "@/lib/data";
 import { FilterX, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { Recipe } from "@/lib/data";
 
 const Recipes = () => {
+  const initialRecipes: Recipe[] = [];
   const [recipes, setRecipes] = useState<Recipe[]>(initialRecipes);
   const [searchTerm, setSearchTerm] = useState("");
+
+  useEffect(() => {
+    const fetchRecipes = async () => {
+      try {
+        const res = await fetch("http://localhost:5001/api/recipes", {
+          credentials: "include",
+        });
+        const data = await res.json();
+        setRecipes(data);
+      } catch (err) {
+        console.error("Failed to fetch recipes", err);
+      }
+    };
+  
+    fetchRecipes();
+  }, []);
+  
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);

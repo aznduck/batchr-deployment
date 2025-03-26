@@ -13,16 +13,16 @@ dotenv.config();
 
 const app = express();
 const allowedOrigins = [
-  "http://localhost:5173", 
+  "http://localhost:5173",
   "http://localhost:8080",
   "https://batchr.vercel.app",
 ];
 
 app.use(
   cors({
-    origin: (origin, callback) => {
+    origin: function (origin, callback) {
       if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
+        callback(null, origin); // explicitly echo the origin back
       } else {
         callback(new Error("Not allowed by CORS"));
       }
@@ -31,8 +31,13 @@ app.use(
   })
 );
 
+// preflight handling (important for cookies + CORS)
+app.options("*", cors());
+
+// body parser middleware
 app.use(express.json());
 
+// session setup with secure cookie config for cross-site auth
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "keyboard cat",
@@ -41,18 +46,25 @@ app.use(
     store: MongoStore.create({
       mongoUrl: process.env.MONGO_URI!,
     }),
-    cookie: { maxAge: 1000 * 60 * 60 * 24 },
+    cookie: {
+      maxAge: 1000 * 60 * 60 * 24, // 1 day
+      sameSite: "none", // allow cross-origin cookies
+      secure: true,     // required for HTTPS (Railway)
+    },
   })
 );
 
+// debug log session
 app.use((req, res, next) => {
   console.log("Session data:", req.session);
   next();
 });
 
+// API routes
 app.use("/api/auth", authRoutes);
 app.use("/api", dataRoutes);
 
+// mongo connection and seeding
 mongoose
   .connect(process.env.MONGO_URI!)
   .then(async () => {

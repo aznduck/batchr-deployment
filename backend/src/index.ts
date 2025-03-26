@@ -12,6 +12,8 @@ import { seedAdminData } from "./utils/seedAdminData";
 dotenv.config();
 const app = express();
 
+app.set("trust proxy", 1);
+
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:8080",
@@ -44,6 +46,7 @@ app.use(express.json());
 
 app.use(
   session({
+    name: "batchr.sid",
     secret: process.env.SESSION_SECRET || "keyboard cat",
     resave: false,
     saveUninitialized: false,

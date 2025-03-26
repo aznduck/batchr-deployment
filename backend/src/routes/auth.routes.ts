@@ -1,6 +1,6 @@
 import express, { Request, Response } from "express";
 import session from "express-session";
-import bcrypt from "bcryptjs";
+import bcrypt from "bcrypt";
 import User from "../models/User";
 import { seedAdminData } from "../utils/seedAdminData";
 import Ingredient from "../models/Ingredient";

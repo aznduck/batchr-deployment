@@ -5,6 +5,9 @@ import cors from "cors";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 import authRoutes from "./routes/auth.routes";
+import dataRoutes from "./routes/data.routes";
+import User from "./models/User";
+import { seedAdminData } from "./utils/seedAdminData";
 
 dotenv.config();
 
@@ -28,7 +31,7 @@ app.use(express.json());
 
 app.use(
   session({
-    secret: process.env.SESSION_SECRET!,
+    secret: process.env.SESSION_SECRET || "keyboard cat",
     resave: false,
     saveUninitialized: false,
     store: MongoStore.create({
@@ -38,13 +41,29 @@ app.use(
   })
 );
 
-// ✅ THIS IS CORRECT
+app.use((req, res, next) => {
+  console.log("Session data:", req.session);
+  next();
+});
+
 app.use("/api/auth", authRoutes);
+app.use("/api", dataRoutes);
 
 mongoose
   .connect(process.env.MONGO_URI!)
-  .then(() => {
+  .then(async () => {
     console.log("✅ Connected to MongoDB");
+
+    const existing = await User.findOne({ username: "admin" });
+    if (!existing) {
+      const adminUser = new User({ username: "admin", password: "123" });
+      await adminUser.save();
+      await seedAdminData(adminUser._id.toString());
+      console.log("🌱 Seeded admin user and demo data");
+    } else {
+      console.log("👤 Admin user already exists");
+    }
+
     app.listen(process.env.PORT, () =>
       console.log(`🚀 Backend running at http://localhost:${process.env.PORT}`)
     );

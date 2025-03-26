@@ -2,6 +2,8 @@ import express, { Request, Response } from "express";
 import session from "express-session";
 import bcrypt from "bcryptjs";
 import User from "../models/User";
+import { seedAdminData } from "../utils/seedAdminData";
+import Ingredient from "../models/Ingredient";
 
 const router = express.Router();
 
@@ -48,12 +50,46 @@ router.post("/login", async (req: Request, res: Response) => {
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
-    (req.session as session.Session & { user?: { username: string } }).user = { username: user.username };
+
+    // ✅ Add session user with cast
+    (req.session as session.Session & { user?: { username: string } }).user = {
+      username: user.username,
+    };
+
+    if (user.username === "admin") {
+      const hasIngredients = await Ingredient.exists({ owner: user._id });
+      if (!hasIngredients) {
+        await seedAdminData(user._id.toString());
+        console.log("Seeded data for admin!");
+      }
+    }
+
     res.status(200).json({ message: "Login successful", token: "dummy-token" });
   } catch (err) {
     console.error("Login error:", err);
     res.status(500).json({ message: "Internal server error" });
   }
+});
+
+// GET /api/auth/session
+router.get("/session", (req: Request, res: Response) => {
+  const sessionData = req.session as session.Session & {
+    user?: { username: string };
+  };
+
+  if (sessionData.user) {
+    res.json({ user: sessionData.user });
+  } else {
+    res.status(401).json({ message: "Not logged in" });
+  }
+});
+
+// POST /api/auth/logout
+router.post("/logout", (req: Request, res: Response) => {
+  req.session.destroy(() => {
+    res.clearCookie("connect.sid");
+    res.json({ message: "Logged out" });
+  });
 });
 
 export default router;

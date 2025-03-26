@@ -17,6 +17,7 @@ const RecipeSchema = new mongoose.Schema({
       notes: String,
     },
   ],
+  owner: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
 });
 
 export default mongoose.model("Recipe", RecipeSchema);

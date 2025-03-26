@@ -51,26 +51,32 @@ router.post("/login", async (req: Request, res: Response) => {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    // st session user
-    req.session.user = { username: user.username };
-
-    // save session before responding
-    req.session.save(async (err) => {
+    // save session data directly
+    req.session.regenerate(async (err) => {
       if (err) {
-        console.error("Session save error:", err);
-        return res.status(500).json({ message: "Failed to save session" });
+        console.error("Session regenerate error:", err);
+        return res.status(500).json({ message: "Session error" });
       }
 
-      // seed admin data if needed
-      if (user.username === "admin") {
-        const hasIngredients = await Ingredient.exists({ owner: user._id });
-        if (!hasIngredients) {
-          await seedAdminData(user._id.toString());
-          console.log("Seeded data for admin!");
+      req.session.user = { username: user.username };
+
+      req.session.save(async (err) => {
+        if (err) {
+          console.error("Session save error:", err);
+          return res.status(500).json({ message: "Session save failed" });
         }
-      }
 
-      res.status(200).json({ message: "Login successful" });
+        // only seed if admin and not already seeded
+        if (user.username === "admin") {
+          const hasIngredients = await Ingredient.exists({ owner: user._id });
+          if (!hasIngredients) {
+            await seedAdminData(user._id.toString());
+            console.log("🌱 Seeded data for admin!");
+          }
+        }
+
+        return res.status(200).json({ message: "Login successful" });
+      });
     });
   } catch (err) {
     console.error("Login error:", err);

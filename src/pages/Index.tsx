@@ -58,7 +58,7 @@ const Index = () => {
     console.log(import.meta.env.VITE_API_URL); // ensure correct API URL
     const fetchData = async () => {
       try {
-        fetch("https://batchr-production.up.railway.app/api/auth/debug", {
+        fetch("hhttps://batchr-deployment-production.up.railway.app/api/auth/debug", {
           credentials: "include"
         }).then(res => res.json()).then(console.log)
         

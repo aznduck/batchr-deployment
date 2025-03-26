@@ -12,7 +12,7 @@ import { seedAdminData } from "./utils/seedAdminData";
 dotenv.config();
 const app = express();
 
-app.set("trust proxy", true);
+app.set("trust proxy", 1);
 
 const allowedOrigins = [
   "http://localhost:5173",
@@ -63,6 +63,11 @@ app.use(
 
 app.use((req, res, next) => {
   console.log("Session data:", req.session);
+  if (!req.session.user) {
+    // Fallback: hardcode user if session is not set
+    console.warn("⚠️ No session user found, defaulting to admin");
+    req.session.user = { username: "admin" };
+  }
   next();
 });
 

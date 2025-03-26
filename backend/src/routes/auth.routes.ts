@@ -51,20 +51,27 @@ router.post("/login", async (req: Request, res: Response) => {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    // ✅ Add session user with cast
-    (req.session as session.Session & { user?: { username: string } }).user = {
-      username: user.username,
-    };
+    // st session user
+    req.session.user = { username: user.username };
 
-    if (user.username === "admin") {
-      const hasIngredients = await Ingredient.exists({ owner: user._id });
-      if (!hasIngredients) {
-        await seedAdminData(user._id.toString());
-        console.log("Seeded data for admin!");
+    // save session before responding
+    req.session.save(async (err) => {
+      if (err) {
+        console.error("Session save error:", err);
+        return res.status(500).json({ message: "Failed to save session" });
       }
-    }
 
-    res.status(200).json({ message: "Login successful", token: "dummy-token" });
+      // seed admin data if needed
+      if (user.username === "admin") {
+        const hasIngredients = await Ingredient.exists({ owner: user._id });
+        if (!hasIngredients) {
+          await seedAdminData(user._id.toString());
+          console.log("Seeded data for admin!");
+        }
+      }
+
+      res.status(200).json({ message: "Login successful" });
+    });
   } catch (err) {
     console.error("Login error:", err);
     res.status(500).json({ message: "Internal server error" });

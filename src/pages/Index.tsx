@@ -58,6 +58,10 @@ const Index = () => {
     console.log(import.meta.env.VITE_API_URL); // ensure correct API URL
     const fetchData = async () => {
       try {
+        fetch("https://batchr-production.up.railway.app/api/auth/debug", {
+          credentials: "include"
+        }).then(res => res.json()).then(console.log)
+        
         const [ingRes, recRes] = await Promise.all([
           fetch(`${import.meta.env.VITE_API_URL}/api/ingredients`, { credentials: "include" }),
           fetch(`${import.meta.env.VITE_API_URL}/api/recipes`, { credentials: "include" }),

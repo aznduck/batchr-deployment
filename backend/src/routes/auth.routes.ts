@@ -105,4 +105,10 @@ router.post("/logout", (req: Request, res: Response) => {
   });
 });
 
+// sanity check (user session data)
+router.get("/debug", (req, res) => {
+  console.log("Session in /debug route:", req.session);
+  res.json({ session: req.session });
+});
+
 export default router;

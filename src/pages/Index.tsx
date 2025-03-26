@@ -64,8 +64,21 @@ const Index = () => {
         ]);
 
         const [ingData, recData] = await Promise.all([ingRes.json(), recRes.json()]);
-        setIngredients(ingData);
-        setRecipes(recData);
+
+        // make sure these are arrays
+        if (!Array.isArray(ingData)) {
+          console.error("Ingredients response is not an array:", ingData);
+          setIngredients([]); // fallback
+        } else {
+          setIngredients(ingData);
+        }
+
+        if (!Array.isArray(recData)) {
+          console.error("Recipes response is not an array:", recData);
+          setRecipes([]); // fallback
+        } else {
+          setRecipes(recData);
+        }
       } catch (error) {
         console.error("Failed to load dashboard data:", error);
       }
@@ -74,10 +87,12 @@ const Index = () => {
     fetchData();
   }, []);
 
-  const lowStockIngredients = ingredients
-    .filter((ingredient) => ingredient.stock < ingredient.threshold)
-    .sort((a, b) => (a.stock / a.threshold) - (b.stock / b.threshold))
-    .slice(0, 3);
+  const lowStockIngredients = Array.isArray(ingredients)
+  ? ingredients
+      .filter((ingredient) => ingredient.stock < ingredient.threshold)
+      .sort((a, b) => (a.stock / a.threshold) - (b.stock / b.threshold))
+      .slice(0, 3)
+  : [];
 
   const recipeProductionData = recipes.map((recipe) => {
     const totalProduction = recipe.batches.reduce(

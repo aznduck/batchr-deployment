@@ -55,7 +55,7 @@ const Index = () => {
   }, [user, navigate]);
 
   useEffect(() => {
-    console.log(import.meta.env.VITE_API_URL);
+    console.log(import.meta.env.VITE_API_URL); // ensure correct API URL
     const fetchData = async () => {
       try {
         const [ingRes, recRes] = await Promise.all([

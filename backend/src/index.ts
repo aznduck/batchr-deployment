@@ -10,8 +10,8 @@ import User from "./models/User";
 import { seedAdminData } from "./utils/seedAdminData";
 
 dotenv.config();
-
 const app = express();
+
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:8080",
@@ -20,24 +20,28 @@ const allowedOrigins = [
 
 app.use(
   cors({
-    origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, origin); // explicitly echo the origin back
-      } else {
-        callback(new Error("Not allowed by CORS"));
+    origin: (origin, callback) => {
+      console.log("CORS origin check:", origin);
+
+      if (!origin) {
+        // Allow server-to-server or curl-like requests
+        return callback(null, true);
       }
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      // Log the blocked origin to debug
+      console.error("❌ Blocked by CORS:", origin);
+      return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
   })
 );
 
-// preflight handling (important for cookies + CORS)
-app.options("*", cors());
-
-// body parser middleware
 app.use(express.json());
 
-// session setup with secure cookie config for cross-site auth
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "keyboard cat",
@@ -46,38 +50,31 @@ app.use(
     store: MongoStore.create({
       mongoUrl: process.env.MONGO_URI!,
     }),
-    cookie: {
-      maxAge: 1000 * 60 * 60 * 24, // 1 day
-      sameSite: "none", // allow cross-origin cookies
-      secure: true,     // required for HTTPS (Railway)
-    },
+    cookie: { maxAge: 1000 * 60 * 60 * 24 },
   })
 );
 
-// debug log session
 app.use((req, res, next) => {
   console.log("Session data:", req.session);
   next();
 });
 
-// API routes
 app.use("/api/auth", authRoutes);
 app.use("/api", dataRoutes);
 
-// mongo connection and seeding
 mongoose
   .connect(process.env.MONGO_URI!)
   .then(async () => {
-    console.log("✅ Connected to MongoDB");
+    console.log("Connected to MongoDB");
 
     const existing = await User.findOne({ username: "admin" });
     if (!existing) {
       const adminUser = new User({ username: "admin", password: "123" });
       await adminUser.save();
       await seedAdminData(adminUser._id.toString());
-      console.log("🌱 Seeded admin user and demo data");
+      console.log("Seeded admin user and demo data");
     } else {
-      console.log("👤 Admin user already exists");
+      console.log("Admin user already exists");
     }
 
     app.listen(process.env.PORT, () =>

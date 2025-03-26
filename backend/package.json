@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "start": "ts-node src/index.ts",
     "dev": "ts-node src/index.ts",
     "seed": "ts-node src/seed.ts",
     "test": "echo \"Error: no test specified\" && exit 1"

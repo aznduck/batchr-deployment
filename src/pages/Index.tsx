@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
 import { Layout } from "@/components/Layout";
 import Stats from "@/components/Dashboard/Stats";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,12 +44,23 @@ const Index = () => {
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
 
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  // redirect if not logged in
   useEffect(() => {
+    if (!user) {
+      navigate("/login");
+    }
+  }, [user, navigate]);
+
+  useEffect(() => {
+    console.log(import.meta.env.VITE_API_URL);
     const fetchData = async () => {
       try {
         const [ingRes, recRes] = await Promise.all([
-          fetch("http://localhost:5001/api/ingredients", { credentials: "include" }),
-          fetch("http://localhost:5001/api/recipes", { credentials: "include" }),
+          fetch(`${import.meta.env.VITE_API_URL}/api/ingredients`, { credentials: "include" }),
+          fetch(`${import.meta.env.VITE_API_URL}/api/recipes`, { credentials: "include" }),
         ]);
 
         const [ingData, recData] = await Promise.all([ingRes.json(), recRes.json()]);

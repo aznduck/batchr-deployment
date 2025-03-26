@@ -16,7 +16,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("http://localhost:5001/api/auth/session", {
+    fetch(`${import.meta.env.VITE_API_URL}/api/auth/session`, {
       credentials: "include",
     })
       .then((res) => res.ok ? res.json() : null)
@@ -34,7 +34,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const logout = () => {
-    fetch("http://localhost:5001/api/auth/logout", {
+    fetch(`${import.meta.env.VITE_API_URL}/api/auth/logout`, {
       method: "POST",
       credentials: "include",
     }).finally(() => {

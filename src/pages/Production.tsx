@@ -43,7 +43,7 @@ const Production = () => {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
 
   useEffect(() => {
-    fetch("http://localhost:5001/api/recipes", { credentials: "include" })
+    fetch(`${import.meta.env.VITE_API_URL}/api/recipes`, { credentials: "include" })
       .then((res) => res.json())
       .then(setRecipes)
       .catch((err) => console.error("Failed to fetch recipes", err));

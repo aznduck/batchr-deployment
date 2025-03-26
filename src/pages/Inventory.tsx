@@ -28,7 +28,7 @@ const Inventory = () => {
   useEffect(() => {
     const fetchIngredients = async () => {
       try {
-        const res = await fetch("http://localhost:5001/api/ingredients", {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/ingredients`, {
           credentials: "include",
         });
         const data = await res.json();

@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -161,6 +160,19 @@ const Ordering = () => {
     }, 1500);
   };
 
+  const renderTooltip = (children: React.ReactNode, content: React.ReactNode) => {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          {children}
+        </TooltipTrigger>
+        <TooltipContent>
+          {content}
+        </TooltipContent>
+      </Tooltip>
+    );
+  };
+
   return (
     <Layout>
       <div className="space-y-8">
@@ -224,13 +236,11 @@ const Ordering = () => {
                               <span className="text-muted-foreground">per {ingredient.unit}</span>
                               {bestSupplier && (
                                 <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <div className="flex items-center ml-1 text-muted-foreground">
-                                        <InfoIcon size={14} />
-                                      </div>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
+                                  {renderTooltip(
+                                    <div className="flex items-center ml-1 text-muted-foreground">
+                                      <InfoIcon size={14} />
+                                    </div>,
+                                    <>
                                       <p>From {bestSupplier.name}</p>
                                       <div className="flex items-center mt-1">
                                         <span className="text-xs text-muted-foreground">Rating: </span>
@@ -238,8 +248,8 @@ const Ordering = () => {
                                           {bestSupplier.rating} <Star size={10} className="fill-amber-500 ml-0.5" />
                                         </span>
                                       </div>
-                                    </TooltipContent>
-                                  </Tooltip>
+                                    </>
+                                  )}
                                 </TooltipProvider>
                               )}
                             </div>
@@ -284,19 +294,15 @@ const Ordering = () => {
                           <h3 className="font-medium flex items-center gap-1">
                             {supplier.name}
                             <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span>
-                                    <Star
-                                      size={14}
-                                      className="text-amber-500 fill-amber-500 ml-1"
-                                    />
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Preferred Supplier</p>
-                                </TooltipContent>
-                              </Tooltip>
+                              {renderTooltip(
+                                <span>
+                                  <Star
+                                    size={14}
+                                    className="text-amber-500 fill-amber-500 ml-1"
+                                  />
+                                </span>,
+                                <p>Preferred Supplier</p>
+                              )}
                             </TooltipProvider>
                           </h3>
                           <div className="flex items-center text-sm text-muted-foreground mt-1">

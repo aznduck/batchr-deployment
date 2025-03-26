@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -18,6 +19,9 @@ export default {
 			}
 		},
 		extend: {
+			fontFamily: {
+				sans: ['Inter', 'sans-serif'],
+			},
 			colors: {
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
@@ -61,35 +65,103 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
-				}
+				},
+				ice: {
+					DEFAULT: '#EBF4F8',
+					50: '#F7FBFD',
+					100: '#EBF4F8',
+					200: '#C5E0EA',
+					300: '#9FCBDD',
+					400: '#78B5CF',
+					500: '#52A0C1',
+					600: '#3984A3',
+					700: '#2A6379',
+					800: '#1C434F',
+					900: '#0E2126',
+					foreground: '#1C434F'
+				},
+				strawberry: {
+					DEFAULT: '#FFE5EA',
+					foreground: '#9A2C41'
+				},
+				chocolate: {
+					DEFAULT: '#E8D9C9',
+					foreground: '#634832'
+				},
+				vanilla: {
+					DEFAULT: '#FFF8E1',
+					foreground: '#8A7645'
+				},
+				cookie: {
+					DEFAULT: '#F0E6D2',
+					foreground: '#6B583F'
+				},
+				rocky: {
+					DEFAULT: '#E1D9D6',
+					foreground: '#5F4C47'
+				},
+				danger: {
+					DEFAULT: '#FDDAD6',
+					foreground: '#A42A1B'
+				},
+				warning: {
+					DEFAULT: '#FFF1D6',
+					foreground: '#95631D'
+				},
+				success: {
+					DEFAULT: '#DEFFDC',
+					foreground: '#256F1E'
+				},
+			},
+			keyframes: {
+				"accordion-down": {
+					from: { height: '0' },
+					to: { height: 'var(--radix-accordion-content-height)' },
+				},
+				"accordion-up": {
+					from: { height: 'var(--radix-accordion-content-height)' },
+					to: { height: '0' },
+				},
+				"fade-in": {
+					from: { opacity: '0', transform: 'translateY(8px)' },
+					to: { opacity: '1', transform: 'translateY(0)' },
+				},
+				"fade-out": {
+					from: { opacity: '1', transform: 'translateY(0)' },
+					to: { opacity: '0', transform: 'translateY(8px)' },
+				},
+				"scale-in": {
+					from: { opacity: '0', transform: 'scale(0.97)' },
+					to: { opacity: '1', transform: 'scale(1)' },
+				},
+				"scale-out": {
+					from: { opacity: '1', transform: 'scale(1)' },
+					to: { opacity: '0', transform: 'scale(0.97)' },
+				},
+				"slide-in": {
+					from: { opacity: '0', transform: 'translateX(20px)' },
+					to: { opacity: '1', transform: 'translateX(0)' },
+				},
+				"slide-out": {
+					from: { opacity: '1', transform: 'translateX(0)' },
+					to: { opacity: '0', transform: 'translateX(20px)' },
+				},
+			},
+			animation: {
+				"accordion-down": "accordion-down 0.2s ease-out",
+				"accordion-up": "accordion-up 0.2s ease-out",
+				"fade-in": "fade-in 0.3s ease-out",
+				"fade-out": "fade-out 0.3s ease-out",
+				"scale-in": "scale-in 0.2s ease-out",
+				"scale-out": "scale-out 0.2s ease-out",
+				"slide-in": "slide-in 0.3s ease-out",
+				"slide-out": "slide-out 0.3s ease-out",
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
 				md: 'calc(var(--radius) - 2px)',
 				sm: 'calc(var(--radius) - 4px)'
 			},
-			keyframes: {
-				'accordion-down': {
-					from: {
-						height: '0'
-					},
-					to: {
-						height: 'var(--radix-accordion-content-height)'
-					}
-				},
-				'accordion-up': {
-					from: {
-						height: 'var(--radix-accordion-content-height)'
-					},
-					to: {
-						height: '0'
-					}
-				}
-			},
-			animation: {
-				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
-			}
 		}
 	},
 	plugins: [require("tailwindcss-animate")],

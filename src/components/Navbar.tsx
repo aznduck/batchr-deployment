@@ -1,17 +1,18 @@
-
 import React from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { 
-  BarChart3, 
-  Package, 
-  ClipboardList, 
-  ShoppingCart, 
+import {
+  BarChart3,
+  Package,
+  ClipboardList,
+  ShoppingCart,
   UtensilsCrossed,
   MenuIcon,
-  X
+  X,
+  LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/context/AuthContext";
 
 interface NavItem {
   name: string;
@@ -29,17 +30,24 @@ const navItems: NavItem[] = [
 
 export const Navbar: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { isAuthenticated, username, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
 
   const toggleMobileMenu = () => {
     setMobileMenuOpen((prev) => !prev);
   };
 
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
+
   return (
     <>
       <header className="fixed top-0 left-0 right-0 z-50 glass-card h-16 border-b border-border/40 backdrop-blur-lg">
         <div className="container flex h-full items-center justify-between px-4">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
             <Link to="/" className="flex items-center gap-2">
               <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-700">
                 Batcher
@@ -48,6 +56,31 @@ export const Navbar: React.FC = () => {
                 β
               </div>
             </Link>
+            {isAuthenticated ? (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  {username}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleLogout}
+                  className="gap-2"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Logout
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" asChild>
+                  <Link to="/login">Login</Link>
+                </Button>
+                <Button size="sm" asChild>
+                  <Link to="/register">Sign Up</Link>
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* Desktop Nav */}
@@ -55,7 +88,7 @@ export const Navbar: React.FC = () => {
             {navItems.map((item) => {
               const isActive = location.pathname === item.path;
               const Icon = item.icon;
-              
+
               return (
                 <Link
                   key={item.name}
@@ -90,13 +123,16 @@ export const Navbar: React.FC = () => {
       {/* Mobile Menu */}
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-40 transform md:hidden animate-fade-in pt-16">
-          <div className="absolute inset-0 bg-background/95 backdrop-blur-sm" onClick={toggleMobileMenu} />
+          <div
+            className="absolute inset-0 bg-background/95 backdrop-blur-sm"
+            onClick={toggleMobileMenu}
+          />
           <nav className="relative bg-card p-6 h-full">
             <div className="flex flex-col space-y-2">
               {navItems.map((item) => {
                 const isActive = location.pathname === item.path;
                 const Icon = item.icon;
-                
+
                 return (
                   <Link
                     key={item.name}
@@ -118,7 +154,7 @@ export const Navbar: React.FC = () => {
           </nav>
         </div>
       )}
-      
+
       {/* Spacer for fixed header */}
       <div className="h-16" />
     </>

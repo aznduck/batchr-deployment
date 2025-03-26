@@ -15,7 +15,7 @@ const app = express();
 const allowedOrigins = [
   "http://localhost:5173", 
   "http://localhost:8080",
-  "https://batchr-deployment-o9qyjuekp-daniels-projects-5e01569d.vercel.app"
+  "https://batchr.vercel.app",
 ];
 
 app.use(

@@ -3,7 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Layout } from "@/components/Layout";
 import Stats from "@/components/Dashboard/Stats";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { CircularGauge } from "@/components/ui/CircularGauge";
@@ -40,9 +46,19 @@ interface Recipe {
   }[];
 }
 
+interface Production {
+  _id: string;
+  date: string;
+  recipeId: string;
+  quantity: number;
+  notes?: string;
+  supervisor: string;
+}
+
 const Index = () => {
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [productionLogs, setProductionLogs] = useState<Production[]>([]);
 
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -55,19 +71,25 @@ const Index = () => {
   }, [user, navigate]);
 
   useEffect(() => {
-    console.log(import.meta.env.VITE_API_URL); // ensure correct API URL
     const fetchData = async () => {
       try {
-        fetch("https://batchr-deployment-production.up.railway.app/api/auth/debug", {
-          credentials: "include"
-        }).then(res => res.json()).then(console.log)
-        
-        const [ingRes, recRes] = await Promise.all([
-          fetch(`${import.meta.env.VITE_API_URL}/api/ingredients`, { credentials: "include" }),
-          fetch(`${import.meta.env.VITE_API_URL}/api/recipes`, { credentials: "include" }),
+        const [ingRes, recRes, prodRes] = await Promise.all([
+          fetch(`${import.meta.env.VITE_API_URL}/api/ingredients`, {
+            credentials: "include",
+          }),
+          fetch(`${import.meta.env.VITE_API_URL}/api/recipes`, {
+            credentials: "include",
+          }),
+          fetch(`${import.meta.env.VITE_API_URL}/api/production`, {
+            credentials: "include",
+          }),
         ]);
 
-        const [ingData, recData] = await Promise.all([ingRes.json(), recRes.json()]);
+        const [ingData, recData, prodData] = await Promise.all([
+          ingRes.json(),
+          recRes.json(),
+          prodRes.json(),
+        ]);
 
         // make sure these are arrays
         if (!Array.isArray(ingData)) {
@@ -83,6 +105,13 @@ const Index = () => {
         } else {
           setRecipes(recData);
         }
+
+        if (!Array.isArray(prodData)) {
+          console.error("Production logs response is not an array:", prodData);
+          setProductionLogs([]); // fallback
+        } else {
+          setProductionLogs(prodData);
+        }
       } catch (error) {
         console.error("Failed to load dashboard data:", error);
       }
@@ -92,22 +121,23 @@ const Index = () => {
   }, []);
 
   const lowStockIngredients = Array.isArray(ingredients)
-  ? ingredients
-      .filter((ingredient) => ingredient.stock < ingredient.threshold)
-      .sort((a, b) => (a.stock / a.threshold) - (b.stock / b.threshold))
-      .slice(0, 3)
-  : [];
+    ? ingredients
+        .filter((ingredient) => ingredient.stock < ingredient.threshold)
+        .sort((a, b) => a.stock / a.threshold - b.stock / b.threshold)
+        .slice(0, 3)
+    : [];
 
   const recipeProductionData = recipes.map((recipe) => {
-    const totalProduction = recipe.batches.reduce(
-      (sum, batch) => sum + batch.quantity,
-      0
-    );
+    // Get all production logs for this recipe
+    const recipeProduction = productionLogs
+      .filter(log => log.recipeId === recipe._id)
+      .reduce((sum, log) => sum + log.quantity, 0);
+    
     return {
       name: recipe.name,
-      production: totalProduction,
+      production: recipeProduction,
     };
-  });
+  }).filter(data => data.production > 0); // Only show recipes with production
 
   return (
     <Layout>
@@ -129,34 +159,44 @@ const Index = () => {
                 Production Overview
               </CardTitle>
               <CardDescription>
-                Recent batch production by flavor
+                Total production by flavor
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-[250px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <RechartsBarChart
-                    data={recipeProductionData}
-                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip
-                      contentStyle={{
-                        borderRadius: "8px",
-                        border: "none",
-                        boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-                      }}
-                    />
-                    <Bar
-                      dataKey="production"
-                      name="Units Produced"
-                      fill="#3984A3"
-                      radius={[4, 4, 0, 0]}
-                    />
-                  </RechartsBarChart>
-                </ResponsiveContainer>
+                {recipeProductionData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RechartsBarChart
+                      data={recipeProductionData}
+                      margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                    >
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        vertical={false}
+                        stroke="#f0f0f0"
+                      />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip
+                        contentStyle={{
+                          borderRadius: "8px",
+                          border: "none",
+                          boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                        }}
+                      />
+                      <Bar
+                        dataKey="production"
+                        name="Units Produced"
+                        fill="#3984A3"
+                        radius={[4, 4, 0, 0]}
+                      />
+                    </RechartsBarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-full flex items-center justify-center text-muted-foreground">
+                    No production data yet
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -167,9 +207,7 @@ const Index = () => {
                 <Package size={18} className="text-orange-500" />
                 Low Stock Alert
               </CardTitle>
-              <CardDescription>
-                Items that need restocking soon
-              </CardDescription>
+              <CardDescription>Items that need restocking soon</CardDescription>
             </CardHeader>
             <CardContent>
               {lowStockIngredients.length === 0 ? (
@@ -221,19 +259,21 @@ const Index = () => {
               <CardDescription>Quick access to recipes</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {recipes.slice(0, 3).map((recipe) => (
-                  <div
-                    key={recipe._id}
-                    className="p-3 rounded-lg border bg-muted/50 hover:bg-muted transition-colors flex flex-col gap-1"
-                  >
-                    <p className="font-medium text-sm">{recipe.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {recipe.ingredients.length} ingredients
-                    </p>
-                  </div>
-                ))}
-              </div>
+              <Link to="/recipes">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {recipes.slice(0, 3).map((recipe) => (
+                    <div
+                      key={recipe._id}
+                      className="p-3 rounded-lg border bg-muted/50 hover:bg-muted transition-colors flex flex-col gap-1"
+                    >
+                      <p className="font-medium text-sm">{recipe.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {recipe.ingredients.length} ingredients
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </Link>
               <Separator className="my-4" />
               <Link to="/recipes">
                 <Button variant="outline" className="w-full">
@@ -247,7 +287,7 @@ const Index = () => {
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <ShoppingCart size={18} className="text-blue-500" />
-                Procurement
+                Ordering
               </CardTitle>
               <CardDescription>
                 Order ingredients from suppliers

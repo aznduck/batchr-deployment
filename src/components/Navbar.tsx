@@ -50,7 +50,7 @@ export const Navbar: React.FC = () => {
           <div className="flex items-center gap-4">
             <Link to="/" className="flex items-center gap-2">
               <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-700">
-                Batcher
+                Batchr
               </span>
               <div className="flex items-center justify-center rounded-full bg-primary w-6 h-6 text-white text-xs font-bold">
                 β

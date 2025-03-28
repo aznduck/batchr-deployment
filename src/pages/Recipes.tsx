@@ -32,16 +32,19 @@ const Recipes = () => {
 
     const fetchIngredients = async () => {
       try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/ingredients`, {
-          credentials: "include",
-        });
+        const res = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/ingredients`,
+          {
+            credentials: "include",
+          }
+        );
         const data = await res.json();
         setIngredients(data);
       } catch (err) {
         console.error("Failed to fetch ingredients", err);
       }
     };
-  
+
     fetchRecipes();
     fetchIngredients();
   }, []);
@@ -54,54 +57,68 @@ const Recipes = () => {
     setSearchTerm("");
   };
 
-  const handleAddRecipe = async (values: { name: string; ingredients: { ingredientId: string; amount: number }[] }) => {
+  const handleAddRecipe = async (values: {
+    name: string;
+    ingredients: { ingredientId: string; amount: number }[];
+  }) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/recipes`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify(values),
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/recipes`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify(values),
+        }
+      );
 
       if (!response.ok) {
-        throw new Error('Failed to create recipe');
+        throw new Error("Failed to create recipe");
       }
 
       const newRecipe = await response.json();
       setRecipes([...recipes, newRecipe]);
-      toast.success('Recipe added successfully!');
+      toast.success("Recipe added successfully!");
     } catch (error) {
-      console.error('Error adding recipe:', error);
-      toast.error('Failed to add recipe');
+      console.error("Error adding recipe:", error);
+      toast.error("Failed to add recipe");
     }
   };
 
-  const handleEditRecipe = async (values: { name: string; ingredients: { ingredientId: string; amount: number }[] }) => {
+  const handleEditRecipe = async (values: {
+    name: string;
+    ingredients: { ingredientId: string; amount: number }[];
+  }) => {
     if (!editingRecipe) return;
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/recipes/${editingRecipe._id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify(values),
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/recipes/${editingRecipe._id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify(values),
+        }
+      );
 
       if (!response.ok) {
-        throw new Error('Failed to update recipe');
+        throw new Error("Failed to update recipe");
       }
 
       const updatedRecipe = await response.json();
-      setRecipes(recipes.map(r => r._id === updatedRecipe._id ? updatedRecipe : r));
-      toast.success('Recipe updated successfully!');
+      setRecipes(
+        recipes.map((r) => (r._id === updatedRecipe._id ? updatedRecipe : r))
+      );
+      toast.success("Recipe updated successfully!");
       setEditingRecipe(null);
     } catch (error) {
-      console.error('Error updating recipe:', error);
-      toast.error('Failed to update recipe');
+      console.error("Error updating recipe:", error);
+      toast.error("Failed to update recipe");
     }
   };
 
@@ -119,7 +136,7 @@ const Recipes = () => {
           <div className="space-y-1">
             <h1 className="text-3xl font-bold tracking-tight">Recipes</h1>
             <p className="text-muted-foreground">
-              Manage your ice cream recipes and production records.
+              Manage your recipes and production records.
             </p>
           </div>
           <Button onClick={() => setAddModalOpen(true)}>
@@ -169,9 +186,9 @@ const Recipes = () => {
                   ? `No results for "${searchTerm}"`
                   : "Try adding a recipe to get started."}
               </p>
-              <Button 
-                variant="outline" 
-                className="mt-4" 
+              <Button
+                variant="outline"
+                className="mt-4"
                 onClick={() => setAddModalOpen(true)}
               >
                 <Plus className="h-4 w-4 mr-2" />
@@ -181,12 +198,12 @@ const Recipes = () => {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
               {filteredRecipes.map((recipe) => (
-                <RecipeCard 
-                  key={recipe._id} 
-                  recipe={recipe} 
+                <RecipeCard
+                  key={recipe._id}
+                  recipe={recipe}
                   ingredients={ingredients}
                   onEdit={setEditingRecipe}
-                  className="h-[290px]" 
+                  className="h-[290px]"
                 />
               ))}
             </div>

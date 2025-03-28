@@ -7,6 +7,7 @@ import mongoose from "mongoose";
 import bcrypt from "bcrypt";
 import authRoutes from "./routes/auth.routes";
 import dataRoutes from "./routes/data.routes";
+import productionRoutes from "./routes/production.routes";
 import User from "./models/User";
 import { seedAdminData } from "./utils/seedAdminData";
 
@@ -79,6 +80,7 @@ app.use((req, res, next) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api", dataRoutes);
+app.use("/api/production", productionRoutes);
 
 mongoose
   .connect(process.env.MONGO_URI!)

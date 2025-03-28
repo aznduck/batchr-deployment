@@ -39,40 +39,37 @@ const Production = () => {
   const [quantity, setQuantity] = useState<string>("50");
   const [notes, setNotes] = useState<string>("");
   const [supervisor, setSupervisor] = useState<string>("");
-
   const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [productionLog, setProductionLog] = useState<ProductionEntry[]>([]);
 
+  // Fetch recipes and production log on mount
   useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_URL}/api/recipes`, { credentials: "include" })
-      .then((res) => res.json())
-      .then(setRecipes)
-      .catch((err) => console.error("Failed to fetch recipes", err));
-  }, []);
+    const fetchData = async () => {
+      try {
+        // Fetch recipes
+        const recipesRes = await fetch(`${import.meta.env.VITE_API_URL}/api/recipes`, {
+          credentials: "include",
+        });
+        const recipesData = await recipesRes.json();
+        setRecipes(recipesData);
 
-  
-  const [productionLog, setProductionLog] = useState<ProductionEntry[]>([
-    {
-      date: new Date(Date.now() - 86400000), // yesterday
-      recipeId: "1",
-      quantity: 50,
-      notes: "Standard batch",
-      supervisor: "John Doe",
-    },
-    {
-      date: new Date(Date.now() - 172800000), // 2 days ago
-      recipeId: "2",
-      quantity: 45,
-      notes: "Extra chocolate",
-      supervisor: "Jane Smith",
-    },
-    {
-      date: new Date(Date.now() - 259200000), // 3 days ago
-      recipeId: "3",
-      quantity: 40,
-      notes: "Fresh strawberries",
-      supervisor: "Mike Johnson",
-    },
-  ]);
+        // Fetch production log
+        const logRes = await fetch(`${import.meta.env.VITE_API_URL}/api/production`, {
+          credentials: "include",
+        });
+        const logData = await logRes.json();
+        setProductionLog(logData.map((entry: any) => ({
+          ...entry,
+          date: new Date(entry.date),
+        })));
+      } catch (err) {
+        console.error("Failed to fetch data:", err);
+        toast.error("Failed to load data");
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Only allow numbers
@@ -81,7 +78,7 @@ const Production = () => {
     }
   };
 
-  const handleAddProduction = () => {
+  const handleAddProduction = async () => {
     if (!selectedRecipe) {
       toast.error("Please select a recipe");
       return;
@@ -105,19 +102,45 @@ const Production = () => {
       supervisor,
     };
 
-    setProductionLog([newEntry, ...productionLog]);
-    
-    // Reset form
-    setSelectedRecipe("");
-    setQuantity("50");
-    setNotes("");
-    setSupervisor("");
-    
-    toast.success("Production log added successfully!");
+    try {
+      // Add production log and update ingredient stocks
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/production`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(newEntry),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to add production log");
+      }
+
+      // Get updated production log from response
+      const updatedLog = await response.json();
+      
+      // Update local state with the new production log
+      setProductionLog([{
+        ...newEntry,
+        date: new Date(newEntry.date),
+      }, ...productionLog]);
+      
+      // Reset form
+      setSelectedRecipe("");
+      setQuantity("50");
+      setNotes("");
+      setSupervisor("");
+      
+      toast.success("Production log added and inventory updated!");
+    } catch (err) {
+      console.error("Failed to add production:", err);
+      toast.error("Failed to add production log");
+    }
   };
 
   const getRecipeById = (id: string): Recipe | undefined => {
-    return recipes.find((recipe) => recipe.id === id);
+    return recipes.find((recipe) => recipe._id === id);
   };
 
   const getRecipeColor = (recipeName: string) => {
@@ -196,7 +219,7 @@ const Production = () => {
                   </SelectTrigger>
                   <SelectContent>
                     {recipes.map((recipe) => (
-                      <SelectItem key={recipe.id} value={recipe.id}>
+                      <SelectItem key={recipe._id} value={recipe._id}>
                         {recipe.name}
                       </SelectItem>
                     ))}
@@ -205,7 +228,7 @@ const Production = () => {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">Quantity (units)</label>
+                <label className="text-sm font-medium">Quantity</label>
                 <Input
                   type="text"
                   value={quantity}
@@ -217,6 +240,7 @@ const Production = () => {
               <div className="space-y-2">
                 <label className="text-sm font-medium">Supervisor</label>
                 <Input
+                  type="text"
                   value={supervisor}
                   onChange={(e) => setSupervisor(e.target.value)}
                   placeholder="Enter supervisor name"
@@ -224,95 +248,74 @@ const Production = () => {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">Notes (optional)</label>
+                <label className="text-sm font-medium">Notes</label>
                 <Input
+                  type="text"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Any special instructions"
+                  placeholder="Add any notes"
                 />
               </div>
             </CardContent>
             <CardFooter>
               <Button onClick={handleAddProduction} className="w-full">
-                <Save className="h-4 w-4 mr-2" />
+                <Save className="w-4 h-4 mr-2" />
                 Save Production Log
               </Button>
             </CardFooter>
           </Card>
 
-          <Card className="lg:col-span-2 hover-scale">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Clipboard size={18} className="text-primary" />
-                Production History
-              </CardTitle>
-              <Button variant="outline" size="sm" onClick={exportLog}>
-                <FileText className="h-4 w-4 mr-2" />
-                Export
-              </Button>
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <FileText size={18} className="text-primary" />
+                  Production History
+                </CardTitle>
+                <Button variant="outline" size="sm" onClick={exportLog}>
+                  <Clipboard className="w-4 h-4 mr-2" />
+                  Export
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
-              {productionLog.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <div className="bg-muted/50 rounded-full p-3 mb-3">
-                    <Clipboard className="h-6 w-6 text-muted-foreground" />
-                  </div>
-                  <h3 className="text-lg font-medium">No production logs</h3>
-                  <p className="text-muted-foreground mt-1">
-                    Add your first production log to get started.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {productionLog.map((entry, index) => {
-                    const recipe = getRecipeById(entry.recipeId);
-                    if (!recipe) return null;
-                    
-                    const color = getRecipeColor(recipe.name);
-                    
-                    return (
-                      <div
-                        key={index}
-                        className={cn(
-                          "p-4 rounded-lg border",
-                          `bg-${color}/10 border-${color}/30`
-                        )}
-                      >
-                        <div className="flex flex-col md:flex-row justify-between mb-2">
-                          <div className="flex gap-2 items-center">
-                            <Badge
-                              variant="outline"
-                              className={`bg-${color}/20 border-${color}/40 text-${color}-foreground`}
-                            >
-                              {recipe.name}
-                            </Badge>
-                            <span className="text-sm text-muted-foreground">
-                              {format(entry.date, "PPP")}
+              <div className="space-y-6">
+                {productionLog.map((entry, index) => {
+                  const recipe = getRecipeById(entry.recipeId);
+                  return (
+                    <div key={index}>
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">
+                              {recipe?.name || "Unknown Recipe"}
                             </span>
+                            <Badge>{entry.quantity} units</Badge>
                           </div>
-                          <div className="font-medium">
-                            {entry.quantity} units
-                          </div>
-                        </div>
-                        
-                        <div className="flex flex-col md:flex-row md:items-center gap-2 text-sm">
-                          <div className="text-muted-foreground">
-                            Supervisor: {entry.supervisor}
+                          <div className="flex gap-2 text-sm text-muted-foreground">
+                            <span>{format(entry.date, "PPP")}</span>
+                            <span>•</span>
+                            <span>{entry.supervisor}</span>
                           </div>
                           {entry.notes && (
-                            <>
-                              <div className="hidden md:block text-muted-foreground">•</div>
-                              <div className="text-muted-foreground">
-                                Notes: {entry.notes}
-                              </div>
-                            </>
+                            <p className="text-sm text-muted-foreground">
+                              {entry.notes}
+                            </p>
                           )}
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
+                      {index < productionLog.length - 1 && (
+                        <Separator className="mt-6" />
+                      )}
+                    </div>
+                  );
+                })}
+                {productionLog.length === 0 && (
+                  <p className="text-center text-muted-foreground">
+                    No production logs yet
+                  </p>
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>

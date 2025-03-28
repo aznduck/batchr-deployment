@@ -91,10 +91,45 @@ const Inventory = () => {
 
   const handleEditIngredient = (ingredient: Ingredient) => {
     setEditingIngredient(ingredient);
-    // In a real app, this would open an edit modal
-    toast.info(`Edit functionality would open for ${ingredient.name}`, {
-      description: "This feature is not implemented in the demo.",
-    });
+    setAddModalOpen(true);
+  };
+
+  const handleUpdateIngredient = async (id: string, values: any) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/ingredients/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          name: values.name,
+          stock: Number(values.stock),
+          unit: values.unit,
+          threshold: Number(values.threshold),
+          history: [
+            ...editingIngredient?.history,
+            {
+              date: new Date().toISOString().split("T")[0],
+              level: Number(values.stock),
+            },
+          ],
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update ingredient');
+      }
+
+      const updatedIngredient = await response.json();
+      setIngredients(ingredients.map(ing => 
+        ing._id === id ? updatedIngredient : ing
+      ));
+      toast.success('Ingredient updated successfully!');
+    } catch (error) {
+      console.error('Error updating ingredient:', error);
+      toast.error('Failed to update ingredient');
+    }
   };
 
   const handleClearSearch = () => {
@@ -180,7 +215,10 @@ const Inventory = () => {
               </Select>
             </div>
 
-            <Button onClick={() => setAddModalOpen(true)}>
+            <Button onClick={() => {
+              setEditingIngredient(null);
+              setAddModalOpen(true);
+            }}>
               <Plus className="h-4 w-4 mr-2" />
               Add
             </Button>
@@ -202,7 +240,10 @@ const Inventory = () => {
               <Button
                 variant="outline"
                 className="mt-4"
-                onClick={() => setAddModalOpen(true)}
+                onClick={() => {
+                  setEditingIngredient(null);
+                  setAddModalOpen(true);
+                }}
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Ingredient
@@ -211,9 +252,9 @@ const Inventory = () => {
           ) : (
             filteredIngredients.map((ingredient) => (
               <IngredientCard
-                key={ingredient.id}
+                key={ingredient._id}
                 ingredient={ingredient}
-                onEdit={handleEditIngredient}
+                onEdit={() => handleEditIngredient(ingredient)}
               />
             ))
           )}
@@ -224,6 +265,8 @@ const Inventory = () => {
         open={addModalOpen}
         onOpenChange={setAddModalOpen}
         onAddIngredient={handleAddIngredient}
+        onEditIngredient={handleUpdateIngredient}
+        editingIngredient={editingIngredient}
       />
     </Layout>
   );

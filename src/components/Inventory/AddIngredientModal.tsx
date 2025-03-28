@@ -1,5 +1,4 @@
-
-import React from "react";
+import React, { useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -19,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useState } from "react";
+import { Ingredient } from "@/lib/data";
 
 interface AddIngredientModalProps {
   open: boolean;
@@ -29,27 +29,51 @@ interface AddIngredientModalProps {
     threshold: number;
     unit: string;
   }) => void;
+  onEditIngredient?: (id: string, values: {
+    name: string;
+    stock: number;
+    threshold: number;
+    unit: string;
+  }) => void;
+  editingIngredient?: Ingredient | null;
 }
 
 export const AddIngredientModal: React.FC<AddIngredientModalProps> = ({
   open,
   onOpenChange,
   onAddIngredient,
+  onEditIngredient,
+  editingIngredient,
 }) => {
   const [name, setName] = useState("");
   const [stock, setStock] = useState<number>(0);
   const [threshold, setThreshold] = useState<number>(0);
   const [unit, setUnit] = useState("kg");
 
+  useEffect(() => {
+    if (editingIngredient) {
+      setName(editingIngredient.name);
+      setStock(editingIngredient.stock);
+      setThreshold(editingIngredient.threshold);
+      setUnit(editingIngredient.unit);
+    }
+  }, [editingIngredient]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    onAddIngredient({
+    const values = {
       name,
       stock,
       threshold,
       unit,
-    });
+    };
+
+    if (editingIngredient && onEditIngredient) {
+      onEditIngredient(editingIngredient._id, values);
+    } else {
+      onAddIngredient(values);
+    }
     
     // Reset form
     setName("");
@@ -63,9 +87,9 @@ export const AddIngredientModal: React.FC<AddIngredientModalProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Add New Ingredient</DialogTitle>
+          <DialogTitle>{editingIngredient ? 'Edit' : 'Add New'} Ingredient</DialogTitle>
           <DialogDescription>
-            Enter the details for the new ingredient to add to your inventory.
+            {editingIngredient ? 'Update' : 'Enter'} the details for the ingredient.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
@@ -119,20 +143,20 @@ export const AddIngredientModal: React.FC<AddIngredientModalProps> = ({
               </Label>
               <Select value={unit} onValueChange={setUnit}>
                 <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select unit" />
+                  <SelectValue placeholder="Select a unit" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="kg">kg</SelectItem>
                   <SelectItem value="g">g</SelectItem>
                   <SelectItem value="l">l</SelectItem>
                   <SelectItem value="ml">ml</SelectItem>
-                  <SelectItem value="pcs">pcs</SelectItem>
+                  <SelectItem value="units">units</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
           <DialogFooter>
-            <Button type="submit">Add Ingredient</Button>
+            <Button type="submit">{editingIngredient ? 'Update' : 'Add'} Ingredient</Button>
           </DialogFooter>
         </form>
       </DialogContent>

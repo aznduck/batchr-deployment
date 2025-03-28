@@ -58,6 +58,25 @@ router.post("/ingredients", ensureAuth, async (req: AuthedRequest, res: Response
   }
 });
 
+router.put("/ingredients/:id", ensureAuth, async (req: AuthedRequest, res: Response) => {
+  try {
+    const ingredient = await Ingredient.findOneAndUpdate(
+      { _id: req.params.id, owner: req.user!._id },
+      { ...req.body },
+      { new: true }
+    );
+    
+    if (!ingredient) {
+      return res.status(404).json({ message: "Ingredient not found" });
+    }
+    
+    res.json(ingredient);
+  } catch (err) {
+    console.error("Error updating ingredient:", err);
+    res.status(500).json({ message: "Error updating ingredient" });
+  }
+});
+
 router.delete("/ingredients/:id", ensureAuth, async (req: AuthedRequest, res: Response) => {
   try {
     await Ingredient.findOneAndDelete({ _id: req.params.id, owner: req.user!._id });

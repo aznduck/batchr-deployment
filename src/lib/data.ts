@@ -1,11 +1,14 @@
-
 export interface Ingredient {
-  id: string;
+  _id: string;
   name: string;
   stock: number;
-  unit: 'kg' | 'L' | 'pcs' | 'g' | 'mL';
+  unit: string;
   threshold: number;
-  history: { date: string; level: number }[];
+  history: {
+    date: string;
+    level: number;
+  }[];
+  owner?: string;
 }
 
 export interface Recipe {
@@ -33,7 +36,7 @@ export interface Supplier {
 // Generate initial mock data
 export const ingredients: Ingredient[] = [
   {
-    id: "1",
+    _id: "1",
     name: "Cream",
     stock: 45,
     unit: "L",
@@ -47,7 +50,7 @@ export const ingredients: Ingredient[] = [
     ],
   },
   {
-    id: "2",
+    _id: "2",
     name: "Sugar",
     stock: 120,
     unit: "kg",
@@ -61,7 +64,7 @@ export const ingredients: Ingredient[] = [
     ],
   },
   {
-    id: "3",
+    _id: "3",
     name: "Vanilla Extract",
     stock: 5,
     unit: "L",
@@ -75,7 +78,7 @@ export const ingredients: Ingredient[] = [
     ],
   },
   {
-    id: "4",
+    _id: "4",
     name: "Cocoa Powder",
     stock: 30,
     unit: "kg",
@@ -89,7 +92,7 @@ export const ingredients: Ingredient[] = [
     ],
   },
   {
-    id: "5",
+    _id: "5",
     name: "Strawberries",
     stock: 15,
     unit: "kg",
@@ -103,7 +106,7 @@ export const ingredients: Ingredient[] = [
     ],
   },
   {
-    id: "6",
+    _id: "6",
     name: "Cookie Dough",
     stock: 25,
     unit: "kg",
@@ -117,7 +120,7 @@ export const ingredients: Ingredient[] = [
     ],
   },
   {
-    id: "7",
+    _id: "7",
     name: "Marshmallows",
     stock: 12,
     unit: "kg",
@@ -131,7 +134,7 @@ export const ingredients: Ingredient[] = [
     ],
   },
   {
-    id: "8",
+    _id: "8",
     name: "Nuts",
     stock: 18,
     unit: "kg",
@@ -145,7 +148,7 @@ export const ingredients: Ingredient[] = [
     ],
   },
   {
-    id: "9",
+    _id: "9",
     name: "Milk",
     stock: 60,
     unit: "L",
@@ -159,7 +162,7 @@ export const ingredients: Ingredient[] = [
     ],
   },
   {
-    id: "10",
+    _id: "10",
     name: "Chocolate Chips",
     stock: 22,
     unit: "kg",
@@ -173,7 +176,7 @@ export const ingredients: Ingredient[] = [
     ],
   },
   {
-    id: "11",
+    _id: "11",
     name: "Stabilizer",
     stock: 8,
     unit: "kg",
@@ -187,7 +190,7 @@ export const ingredients: Ingredient[] = [
     ],
   },
   {
-    id: "12",
+    _id: "12",
     name: "Salt",
     stock: 30,
     unit: "kg",
@@ -349,7 +352,7 @@ export const suppliers: Supplier[] = [
 ];
 
 export const getIngredientById = (id: string): Ingredient | undefined => {
-  return ingredients.find((ingredient) => ingredient.id === id);
+  return ingredients.find((ingredient) => ingredient._id === id);
 };
 
 export const getStockStatus = (ingredient: Ingredient): 'critical' | 'warning' | 'normal' => {

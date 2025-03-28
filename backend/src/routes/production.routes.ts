@@ -9,8 +9,9 @@ const router = express.Router();
 // Get all production logs for the authenticated user
 router.get("/", authenticateUser, async (req, res) => {
   try {
-    const logs = await Production.find({ owner: req.session.user?.username })
-      .sort({ date: -1 });
+    const logs = await Production.find({
+      owner: req.session.user?.username,
+    }).sort({ date: -1 });
     res.json(logs);
   } catch (err) {
     console.error("Failed to fetch production logs:", err);
@@ -32,10 +33,12 @@ router.post("/", authenticateUser, async (req, res) => {
     // Check if we have enough ingredients
     const ingredientUpdates = [];
     for (const recipeIngredient of recipe.ingredients) {
-      const ingredient = await Ingredient.findById(recipeIngredient.ingredientId);
+      const ingredient = await Ingredient.findById(
+        recipeIngredient.ingredientId
+      );
       if (!ingredient) {
-        return res.status(404).json({ 
-          error: `Ingredient not found: ${recipeIngredient.ingredientId}` 
+        return res.status(404).json({
+          error: `Ingredient not found: ${recipeIngredient.ingredientId}`,
         });
       }
 
@@ -45,7 +48,7 @@ router.post("/", authenticateUser, async (req, res) => {
 
       // Calculate how much of this ingredient we need
       const requiredAmount = amount * quantity;
-      
+
       // Check if we have enough
       if (currentStock < requiredAmount) {
         return res.status(400).json({
@@ -61,7 +64,7 @@ router.post("/", authenticateUser, async (req, res) => {
     }
 
     // Get current date in YYYY-MM-DD format for history
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split("T")[0];
 
     // Create production log
     const production = new Production({
@@ -82,7 +85,7 @@ router.post("/", authenticateUser, async (req, res) => {
         $set: { stock: update.newStock },
         $push: {
           history: {
-            date: today, // Use today's date for stock history
+            date: date, // Use today's date for stock history
             level: update.newStock,
           },
         },

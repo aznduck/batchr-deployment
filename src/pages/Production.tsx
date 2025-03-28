@@ -1,8 +1,13 @@
-
 import React, { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
-import { CardHeader, CardContent, CardFooter, Card, CardTitle } from "@/components/ui/card";
+import {
+  CardHeader,
+  CardContent,
+  CardFooter,
+  Card,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -11,7 +16,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar as CalendarIcon, Clipboard, FileText, PlusCircle, Save } from "lucide-react";
+import {
+  Calendar as CalendarIcon,
+  Clipboard,
+  FileText,
+  PlusCircle,
+  Save,
+} from "lucide-react";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -47,21 +58,29 @@ const Production = () => {
     const fetchData = async () => {
       try {
         // Fetch recipes
-        const recipesRes = await fetch(`${import.meta.env.VITE_API_URL}/api/recipes`, {
-          credentials: "include",
-        });
+        const recipesRes = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/recipes`,
+          {
+            credentials: "include",
+          }
+        );
         const recipesData = await recipesRes.json();
         setRecipes(recipesData);
 
         // Fetch production log
-        const logRes = await fetch(`${import.meta.env.VITE_API_URL}/api/production`, {
-          credentials: "include",
-        });
+        const logRes = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/production`,
+          {
+            credentials: "include",
+          }
+        );
         const logData = await logRes.json();
-        setProductionLog(logData.map((entry: any) => ({
-          ...entry,
-          date: new Date(entry.date),
-        })));
+        setProductionLog(
+          logData.map((entry: any) => ({
+            ...entry,
+            date: new Date(entry.date),
+          }))
+        );
       } catch (err) {
         console.error("Failed to fetch data:", err);
         toast.error("Failed to load data");
@@ -104,14 +123,17 @@ const Production = () => {
 
     try {
       // Add production log and update ingredient stocks
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/production`, {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(newEntry),
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/production`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(newEntry),
+        }
+      );
 
       if (!response.ok) {
         throw new Error("Failed to add production log");
@@ -119,19 +141,22 @@ const Production = () => {
 
       // Get updated production log from response
       const updatedLog = await response.json();
-      
+
       // Update local state with the new production log
-      setProductionLog([{
-        ...newEntry,
-        date: new Date(newEntry.date),
-      }, ...productionLog]);
-      
+      setProductionLog([
+        {
+          ...newEntry,
+          date: new Date(newEntry.date),
+        },
+        ...productionLog,
+      ]);
+
       // Reset form
       setSelectedRecipe("");
       setQuantity("50");
       setNotes("");
       setSupervisor("");
-      
+
       toast.success("Production log added and inventory updated!");
     } catch (err) {
       console.error("Failed to add production:", err);
@@ -170,9 +195,11 @@ const Production = () => {
     <Layout>
       <div className="space-y-8">
         <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold tracking-tight">Production Tracking</h1>
+          <h1 className="text-3xl font-bold tracking-tight">
+            Production Tracking
+          </h1>
           <p className="text-muted-foreground">
-            Log your daily ice cream production batches.
+            Log your daily production batches.
           </p>
         </div>
 
@@ -213,7 +240,10 @@ const Production = () => {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">Recipe</label>
-                <Select value={selectedRecipe} onValueChange={setSelectedRecipe}>
+                <Select
+                  value={selectedRecipe}
+                  onValueChange={setSelectedRecipe}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select a recipe" />
                   </SelectTrigger>

@@ -127,17 +127,19 @@ const Index = () => {
         .slice(0, 3)
     : [];
 
-  const recipeProductionData = recipes.map((recipe) => {
-    // Get all production logs for this recipe
-    const recipeProduction = productionLogs
-      .filter(log => log.recipeId === recipe._id)
-      .reduce((sum, log) => sum + log.quantity, 0);
-    
-    return {
-      name: recipe.name,
-      production: recipeProduction,
-    };
-  }).filter(data => data.production > 0); // Only show recipes with production
+  const recipeProductionData = recipes
+    .map((recipe) => {
+      // Get all production logs for this recipe
+      const recipeProduction = productionLogs
+        .filter((log) => log.recipeId === recipe._id)
+        .reduce((sum, log) => sum + log.quantity, 0);
+
+      return {
+        name: recipe.name,
+        production: recipeProduction,
+      };
+    })
+    .filter((data) => data.production > 0); // Only show recipes with production
 
   return (
     <Layout>
@@ -145,7 +147,7 @@ const Index = () => {
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-muted-foreground">
-            Overview of your ice cream production inventory.
+            Overview of your production inventory.
           </p>
         </div>
 
@@ -158,9 +160,7 @@ const Index = () => {
                 <BarChart size={18} className="text-primary" />
                 Production Overview
               </CardTitle>
-              <CardDescription>
-                Total production by flavor
-              </CardDescription>
+              <CardDescription>Total production by flavor</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-[250px] w-full">

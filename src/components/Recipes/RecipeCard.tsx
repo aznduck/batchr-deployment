@@ -1,25 +1,33 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Recipe, getIngredientById } from "@/lib/data";
+import { Recipe, Ingredient } from "@/lib/data";
 import { cn } from "@/lib/utils";
-import { History, Info, Users } from "lucide-react";
+import { History, Info, Users, Edit } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface RecipeCardProps {
   recipe: Recipe;
   className?: string;
+  ingredients: Ingredient[];
+  onEdit?: (recipe: Recipe) => void;
 }
 
 export const RecipeCard: React.FC<RecipeCardProps> = ({
   recipe,
   className,
+  ingredients,
+  onEdit,
 }) => {
   const [flipped, setFlipped] = useState(false);
 
   const toggleFlip = () => {
     setFlipped(!flipped);
+  };
+
+  const handleEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onEdit?.(recipe);
   };
 
   // Get color based on recipe name
@@ -60,9 +68,19 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
           )}
         >
           <CardHeader className="pb-2">
-            <CardTitle className={`text-${color}-foreground`}>
-              {recipe.name}
-            </CardTitle>
+            <div className="flex justify-between items-center">
+              <CardTitle className={`text-${color}-foreground`}>
+                {recipe.name}
+              </CardTitle>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={`h-8 w-8 text-${color}-foreground/70 hover:text-${color}-foreground hover:bg-${color}/60`}
+                onClick={handleEdit}
+              >
+                <Edit size={16} />
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="pb-2">
             <h4 className={`text-sm font-medium mb-2 text-${color}-foreground/80`}>
@@ -70,7 +88,7 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
             </h4>
             <ul className="space-y-1 text-sm">
               {recipe.ingredients.map((item) => {
-                const ingredient = getIngredientById(item.ingredientId);
+                const ingredient = ingredients.find(i => i._id === item.ingredientId);
                 return (
                   ingredient && (
                     <li
@@ -109,9 +127,19 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
           )}
         >
           <CardHeader className="pb-2">
-            <CardTitle className={`text-${color}-foreground`}>
-              {recipe.name} <span className="text-base font-normal">History</span>
-            </CardTitle>
+            <div className="flex justify-between items-center">
+              <CardTitle className={`text-${color}-foreground`}>
+                {recipe.name} <span className="text-base font-normal">History</span>
+              </CardTitle>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={`h-8 w-8 text-${color}-foreground/70 hover:text-${color}-foreground hover:bg-${color}/60`}
+                onClick={handleEdit}
+              >
+                <Edit size={16} />
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="pb-2">
             <h4 className={`text-sm font-medium mb-2 text-${color}-foreground/80`}>

@@ -12,7 +12,7 @@ export interface Ingredient {
 }
 
 export interface Recipe {
-  id: string;
+  _id: string;
   name: string;
   ingredients: {
     ingredientId: string;
@@ -24,6 +24,7 @@ export interface Recipe {
     quantity: number;
     notes?: string;
   }[];
+  owner?: string;
 }
 
 export interface Supplier {
@@ -207,7 +208,7 @@ export const ingredients: Ingredient[] = [
 
 export const recipes: Recipe[] = [
   {
-    id: "1",
+    _id: "1",
     name: "Vanilla",
     ingredients: [
       { ingredientId: "1", amount: 5 }, // Cream
@@ -233,7 +234,7 @@ export const recipes: Recipe[] = [
     ],
   },
   {
-    id: "2",
+    _id: "2",
     name: "Chocolate",
     ingredients: [
       { ingredientId: "1", amount: 5 }, // Cream
@@ -260,7 +261,7 @@ export const recipes: Recipe[] = [
     ],
   },
   {
-    id: "3",
+    _id: "3",
     name: "Strawberry",
     ingredients: [
       { ingredientId: "1", amount: 5 }, // Cream
@@ -286,7 +287,7 @@ export const recipes: Recipe[] = [
     ],
   },
   {
-    id: "4",
+    _id: "4",
     name: "Cookie Dough",
     ingredients: [
       { ingredientId: "1", amount: 5 }, // Cream
@@ -313,7 +314,7 @@ export const recipes: Recipe[] = [
     ],
   },
   {
-    id: "5",
+    _id: "5",
     name: "Rocky Road",
     ingredients: [
       { ingredientId: "1", amount: 5 }, // Cream
@@ -371,7 +372,7 @@ export const getIngredientsByUrgency = (): Ingredient[] => {
 };
 
 export const getRecipeById = (id: string): Recipe | undefined => {
-  return recipes.find((recipe) => recipe.id === id);
+  return recipes.find((recipe) => recipe._id === id);
 };
 
 export const getSupplierById = (id: string): Supplier | undefined => {

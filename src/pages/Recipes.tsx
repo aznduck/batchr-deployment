@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -7,12 +6,16 @@ import { RecipeCard } from "@/components/Recipes/RecipeCard";
 import { FilterX, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import { Recipe } from "@/lib/data";
+import { Recipe, Ingredient } from "@/lib/data";
+import { AddRecipeModal } from "@/components/Recipe/AddRecipeModal";
 
 const Recipes = () => {
   const initialRecipes: Recipe[] = [];
   const [recipes, setRecipes] = useState<Recipe[]>(initialRecipes);
+  const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
 
   useEffect(() => {
     const fetchRecipes = async () => {
@@ -26,10 +29,22 @@ const Recipes = () => {
         console.error("Failed to fetch recipes", err);
       }
     };
+
+    const fetchIngredients = async () => {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/ingredients`, {
+          credentials: "include",
+        });
+        const data = await res.json();
+        setIngredients(data);
+      } catch (err) {
+        console.error("Failed to fetch ingredients", err);
+      }
+    };
   
     fetchRecipes();
+    fetchIngredients();
   }, []);
-  
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
@@ -39,10 +54,55 @@ const Recipes = () => {
     setSearchTerm("");
   };
 
-  const handleAddRecipe = () => {
-    toast.info("Add recipe functionality", {
-      description: "This feature would allow creating new recipes.",
-    });
+  const handleAddRecipe = async (values: { name: string; ingredients: { ingredientId: string; amount: number }[] }) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/recipes`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(values),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create recipe');
+      }
+
+      const newRecipe = await response.json();
+      setRecipes([...recipes, newRecipe]);
+      toast.success('Recipe added successfully!');
+    } catch (error) {
+      console.error('Error adding recipe:', error);
+      toast.error('Failed to add recipe');
+    }
+  };
+
+  const handleEditRecipe = async (values: { name: string; ingredients: { ingredientId: string; amount: number }[] }) => {
+    if (!editingRecipe) return;
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/recipes/${editingRecipe._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(values),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update recipe');
+      }
+
+      const updatedRecipe = await response.json();
+      setRecipes(recipes.map(r => r._id === updatedRecipe._id ? updatedRecipe : r));
+      toast.success('Recipe updated successfully!');
+      setEditingRecipe(null);
+    } catch (error) {
+      console.error('Error updating recipe:', error);
+      toast.error('Failed to update recipe');
+    }
   };
 
   // Filter recipes based on search term
@@ -62,7 +122,7 @@ const Recipes = () => {
               Manage your ice cream recipes and production records.
             </p>
           </div>
-          <Button onClick={handleAddRecipe}>
+          <Button onClick={() => setAddModalOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Add Recipe
           </Button>
@@ -109,7 +169,11 @@ const Recipes = () => {
                   ? `No results for "${searchTerm}"`
                   : "Try adding a recipe to get started."}
               </p>
-              <Button variant="outline" className="mt-4" onClick={handleAddRecipe}>
+              <Button 
+                variant="outline" 
+                className="mt-4" 
+                onClick={() => setAddModalOpen(true)}
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Recipe
               </Button>
@@ -117,12 +181,29 @@ const Recipes = () => {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
               {filteredRecipes.map((recipe) => (
-                <RecipeCard key={recipe.id} recipe={recipe} className="h-[290px]" />
+                <RecipeCard 
+                  key={recipe._id} 
+                  recipe={recipe} 
+                  ingredients={ingredients}
+                  onEdit={setEditingRecipe}
+                  className="h-[290px]" 
+                />
               ))}
             </div>
           )}
         </div>
       </div>
+
+      <AddRecipeModal
+        open={addModalOpen || !!editingRecipe}
+        onOpenChange={(open) => {
+          setAddModalOpen(open);
+          if (!open) setEditingRecipe(null);
+        }}
+        onAddRecipe={editingRecipe ? handleEditRecipe : handleAddRecipe}
+        availableIngredients={ingredients}
+        editingRecipe={editingRecipe}
+      />
     </Layout>
   );
 };

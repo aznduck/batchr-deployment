@@ -100,12 +100,35 @@ router.get("/recipes", ensureAuth, async (req: AuthedRequest, res: Response) => 
 
 router.post("/recipes", ensureAuth, async (req: AuthedRequest, res: Response) => {
   try {
-    const newRecipe = new Recipe({ ...req.body, owner: req.user!._id });
+    const newRecipe = new Recipe({
+      ...req.body,
+      owner: req.user!._id,
+      batches: [] // Initialize with empty batches array
+    });
     await newRecipe.save();
     res.status(201).json(newRecipe);
   } catch (err) {
     console.error("Error creating recipe:", err);
     res.status(500).json({ message: "Error creating recipe" });
+  }
+});
+
+router.put("/recipes/:id", ensureAuth, async (req: AuthedRequest, res: Response) => {
+  try {
+    const recipe = await Recipe.findOneAndUpdate(
+      { _id: req.params.id, owner: req.user!._id },
+      { ...req.body },
+      { new: true }
+    );
+    
+    if (!recipe) {
+      return res.status(404).json({ message: "Recipe not found" });
+    }
+    
+    res.json(recipe);
+  } catch (err) {
+    console.error("Error updating recipe:", err);
+    res.status(500).json({ message: "Error updating recipe" });
   }
 });
 

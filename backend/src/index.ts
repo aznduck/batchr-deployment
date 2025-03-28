@@ -4,6 +4,7 @@ import MongoStore from "connect-mongo";
 import cors from "cors";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
+import bcrypt from "bcrypt";
 import authRoutes from "./routes/auth.routes";
 import dataRoutes from "./routes/data.routes";
 import User from "./models/User";
@@ -44,30 +45,35 @@ app.use(
 
 app.use(express.json());
 
+declare module "express-session" {
+  interface SessionData {
+    user?: { username: string };
+  }
+}
+
 app.use(
   session({
     name: "batchr.sid",
     secret: process.env.SESSION_SECRET!,
-    resave: false,
+    resave: true,
     saveUninitialized: false,
     store: MongoStore.create({ mongoUrl: process.env.MONGO_URI! }),
     cookie: {
       maxAge: 1000 * 60 * 60 * 24, // 1 day
       httpOnly: true,
-      sameSite: "none",      // required for cross-origin cookies
-      secure: true           // required for cross-origin cookies on HTTPS
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     },
   })
 );
 
-
+// Log session data for debugging
 app.use((req, res, next) => {
-  console.log("Session data:", req.session);
-  if (!req.session.user) {
-    // Fallback: hardcode user if session is not set
-    console.warn("⚠️ No session user found, defaulting to admin");
-    req.session.user = { username: "admin" };
-  }
+  console.log("Session data:", {
+    id: req.sessionID,
+    user: req.session.user,
+    cookie: req.session.cookie,
+  });
   next();
 });
 
@@ -81,7 +87,12 @@ mongoose
 
     const existing = await User.findOne({ username: "admin" });
     if (!existing) {
-      const adminUser = new User({ username: "admin", password: "123" });
+      const hashedPassword = await bcrypt.hash("123", 10);
+      const adminUser = new User({
+        username: "admin",
+        password: hashedPassword,
+        isAdmin: true,
+      });
       await adminUser.save();
       await seedAdminData(adminUser._id.toString());
       console.log("Seeded admin user and demo data");

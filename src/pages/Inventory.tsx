@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -19,25 +18,31 @@ import { Ingredient } from "@/lib/data";
 
 const Inventory = () => {
   const initialIngredients: Ingredient[] = []; // define an empty array or populate with initial data
-  const [ingredients, setIngredients] = useState<Ingredient[]>(initialIngredients);
+  const [ingredients, setIngredients] =
+    useState<Ingredient[]>(initialIngredients);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("urgency");
   const [addModalOpen, setAddModalOpen] = useState(false);
-  const [editingIngredient, setEditingIngredient] = useState<Ingredient | null>(null);
+  const [editingIngredient, setEditingIngredient] = useState<Ingredient | null>(
+    null
+  );
 
   useEffect(() => {
     const fetchIngredients = async () => {
       try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/ingredients`, {
-          credentials: "include",
-        });
+        const res = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/ingredients`,
+          {
+            credentials: "include",
+          }
+        );
         const data = await res.json();
         setIngredients(data);
       } catch (err) {
         console.error("Failed to fetch ingredients", err);
       }
     };
-  
+
     fetchIngredients();
   }, []);
 
@@ -49,22 +54,39 @@ const Inventory = () => {
     setSortBy(value);
   };
 
-  const handleAddIngredient = (values) => {
-    const newIngredient: Ingredient = {
-      id: (ingredients.length + 1).toString(),
-      name: values.name,
-      stock: Number(values.stock),
-      unit: values.unit,
-      threshold: Number(values.threshold),
-      history: [
-        {
-          date: new Date().toISOString().split("T")[0],
-          level: Number(values.stock),
+  const handleAddIngredient = async (values) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/ingredients`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-      ],
-    };
+        credentials: 'include',
+        body: JSON.stringify({
+          name: values.name,
+          stock: Number(values.stock),
+          unit: values.unit,
+          threshold: Number(values.threshold),
+          history: [
+            {
+              date: new Date().toISOString().split("T")[0],
+              level: Number(values.stock),
+            },
+          ],
+        }),
+      });
 
-    setIngredients([...ingredients, newIngredient]);
+      if (!response.ok) {
+        throw new Error('Failed to create ingredient');
+      }
+
+      const newIngredient = await response.json();
+      setIngredients([...ingredients, newIngredient]);
+      toast.success('Ingredient added successfully!');
+    } catch (error) {
+      console.error('Error adding ingredient:', error);
+      toast.error('Failed to add ingredient');
+    }
   };
 
   const handleEditIngredient = (ingredient: Ingredient) => {
@@ -110,7 +132,9 @@ const Inventory = () => {
     <Layout>
       <div className="space-y-6">
         <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold tracking-tight">Ingredient Inventory</h1>
+          <h1 className="text-3xl font-bold tracking-tight">
+            Ingredient Inventory
+          </h1>
           <p className="text-muted-foreground">
             Manage your ingredients and monitor stock levels.
           </p>
@@ -149,7 +173,9 @@ const Inventory = () => {
                   <SelectItem value="name-asc">Name (A-Z)</SelectItem>
                   <SelectItem value="name-desc">Name (Z-A)</SelectItem>
                   <SelectItem value="stock-asc">Stock (Low to High)</SelectItem>
-                  <SelectItem value="stock-desc">Stock (High to Low)</SelectItem>
+                  <SelectItem value="stock-desc">
+                    Stock (High to Low)
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>

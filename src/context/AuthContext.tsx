@@ -19,7 +19,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     fetch(`${import.meta.env.VITE_API_URL}/api/auth/session`, {
       credentials: "include",
     })
-      .then((res) => res.ok ? res.json() : null)
+      .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data?.user?.username) {
           setUser(data.user.username);

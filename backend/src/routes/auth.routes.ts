@@ -2,17 +2,26 @@ import express, { Request, Response } from "express";
 import session from "express-session";
 import bcrypt from "bcrypt";
 import User from "../models/User";
-import { seedAdminData } from "../utils/seedAdminData";
 import Ingredient from "../models/Ingredient";
+import { seedAdminData } from "../utils/seedAdminData";
 
 const router = express.Router();
+
+// Extend session to include user property
+declare module "express-session" {
+  interface SessionData {
+    user?: { username: string };
+  }
+}
 
 // POST /api/auth/register
 router.post("/register", async (req: Request, res: Response) => {
   const { username, password } = req.body;
 
   if (!username || !password) {
-    return res.status(400).json({ message: "Username and password are required" });
+    return res
+      .status(400)
+      .json({ message: "Username and password are required" });
   }
 
   try {
@@ -22,7 +31,11 @@ router.post("/register", async (req: Request, res: Response) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = new User({ username, password: hashedPassword });
+    const newUser = new User({
+      username,
+      password: hashedPassword,
+      isAdmin: false, // New users are not admins by default
+    });
     await newUser.save();
 
     res.status(201).json({ message: "User registered successfully" });
@@ -37,7 +50,9 @@ router.post("/login", async (req: Request, res: Response) => {
   const { username, password } = req.body;
 
   if (!username || !password) {
-    return res.status(400).json({ message: "Username and password are required" });
+    return res
+      .status(400)
+      .json({ message: "Username and password are required" });
   }
 
   try {
@@ -51,32 +66,36 @@ router.post("/login", async (req: Request, res: Response) => {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    // save session data directly
-    req.session.regenerate(async (err) => {
+    // Set session data directly
+    req.session.user = { username: user.username };
+    console.log("Login: Setting session user to:", req.session.user);
+
+    // Save session explicitly
+    req.session.save((err) => {
       if (err) {
-        console.error("Session regenerate error:", err);
-        return res.status(500).json({ message: "Session error" });
+        console.error("Session save error:", err);
+        return res.status(500).json({ message: "Session save failed" });
       }
 
-      req.session.user = { username: user.username };
-
-      req.session.save(async (err) => {
-        if (err) {
-          console.error("Session save error:", err);
-          return res.status(500).json({ message: "Session save failed" });
-        }
-
-        // only seed if admin and not already seeded
-        if (user.username === "admin") {
-          const hasIngredients = await Ingredient.exists({ owner: user._id });
-          if (!hasIngredients) {
-            await seedAdminData(user._id.toString());
-            console.log("🌱 Seeded data for admin!");
-          }
-        }
-
-        return res.status(200).json({ message: "Login successful" });
+      // Send response after session is saved
+      res.status(200).json({
+        message: "Login successful",
+        user: {
+          username: user.username,
+          isAdmin: user.isAdmin,
+        },
       });
+
+      // Seed data for admin if needed (after response sent)
+      if (user.username === "admin") {
+        Ingredient.exists({ owner: user._id }).then((hasIngredients) => {
+          if (!hasIngredients) {
+            seedAdminData(user._id.toString()).then(() => {
+              console.log(" Seeded data for admin!");
+            });
+          }
+        });
+      }
     });
   } catch (err) {
     console.error("Login error:", err);
@@ -84,25 +103,44 @@ router.post("/login", async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/auth/session
-router.get("/session", (req: Request, res: Response) => {
-  const sessionData = req.session as session.Session & {
-    user?: { username: string };
-  };
-
-  if (sessionData.user) {
-    res.json({ user: sessionData.user });
+// POST /api/auth/logout
+router.post("/logout", (req: Request, res: Response) => {
+  if (req.session) {
+    req.session.destroy((err) => {
+      if (err) {
+        console.error("Logout error:", err);
+        return res.status(500).json({ message: "Error logging out" });
+      }
+      res.clearCookie("batchr.sid");
+      res.status(200).json({ message: "Logged out successfully" });
+    });
   } else {
-    res.status(401).json({ message: "Not logged in" });
+    res.status(200).json({ message: "Already logged out" });
   }
 });
 
-// POST /api/auth/logout
-router.post("/logout", (req: Request, res: Response) => {
-  req.session.destroy(() => {
-    res.clearCookie("connect.sid");
-    res.json({ message: "Logged out" });
-  });
+// GET /api/auth/session
+router.get("/session", async (req: Request, res: Response) => {
+  try {
+    console.log("Session check:", req.session);
+    
+    if (!req.session.user) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const user = await User.findOne({ username: req.session.user.username });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json({
+      username: user.username,
+      isAdmin: user.isAdmin,
+    });
+  } catch (err) {
+    console.error("Session error:", err);
+    res.status(500).json({ message: "Error fetching session" });
+  }
 });
 
 // sanity check (user session data)

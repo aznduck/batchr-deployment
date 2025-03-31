@@ -1,10 +1,15 @@
+import { UnitCategoryType } from "./units";
+
 export interface Ingredient {
   _id: string;
   name: string;
   stock: number;
   unit: string;
-  unitCategory: string;
+  unitCategory?: UnitCategoryType;
   threshold: number;
+  minimumOrderQuantity?: number;
+  supplierId?: string;
+  upc?: string;
   history: {
     date: string;
     level: number;
@@ -31,190 +36,219 @@ export interface Recipe {
 export interface Supplier {
   id: string;
   name: string;
+  email: string;
+  phone: string;
   rating: number;
   preferred: boolean;
+  minimumOrderRequirements?: {
+    value?: number;
+    quantity?: number;
+    unit?: string;
+  };
+  leadTime?: number; // in days
+}
+
+export interface OrderItem {
+  ingredientId: string;
+  ingredient: Ingredient;
+  quantity: number;
+  unit: string;
+  supplier?: Supplier;
+  minimumOrderQuantity?: number;
+}
+
+export interface Order {
+  id: string;
+  supplierId: string;
+  supplier?: Supplier;
+  items: OrderItem[];
+  status: "pending" | "ordered" | "partial" | "received";
+  orderDate: string;
+  expectedDeliveryDate?: string;
+  receivedDate?: string;
+  packingSlipNumber?: string;
 }
 
 // Generate initial mock data
 export const ingredients: Ingredient[] = [
   {
     _id: "1",
-    name: "Cream",
-    stock: 45,
-    unit: "L",
-    unitCategory: "volume",
-    threshold: 50,
-    history: [
-      { date: "2023-06-01", level: 100 },
-      { date: "2023-06-15", level: 85 },
-      { date: "2023-07-01", level: 70 },
-      { date: "2023-07-15", level: 55 },
-      { date: "2023-08-01", level: 45 },
-    ],
-  },
-  {
-    _id: "2",
-    name: "Sugar",
-    stock: 120,
-    unit: "kg",
-    unitCategory: "weight",
-    threshold: 50,
-    history: [
-      { date: "2023-06-01", level: 200 },
-      { date: "2023-06-15", level: 180 },
-      { date: "2023-07-01", level: 160 },
-      { date: "2023-07-15", level: 140 },
-      { date: "2023-08-01", level: 120 },
-    ],
-  },
-  {
-    _id: "3",
-    name: "Vanilla Extract",
-    stock: 5,
-    unit: "L",
-    unitCategory: "volume",
-    threshold: 10,
-    history: [
-      { date: "2023-06-01", level: 25 },
-      { date: "2023-06-15", level: 20 },
-      { date: "2023-07-01", level: 15 },
-      { date: "2023-07-15", level: 10 },
-      { date: "2023-08-01", level: 5 },
-    ],
-  },
-  {
-    _id: "4",
-    name: "Cocoa Powder",
-    stock: 30,
-    unit: "kg",
-    unitCategory: "weight",
-    threshold: 25,
-    history: [
-      { date: "2023-06-01", level: 50 },
-      { date: "2023-06-15", level: 45 },
-      { date: "2023-07-01", level: 40 },
-      { date: "2023-07-15", level: 35 },
-      { date: "2023-08-01", level: 30 },
-    ],
-  },
-  {
-    _id: "5",
-    name: "Strawberries",
-    stock: 15,
-    unit: "kg",
-    unitCategory: "weight",
-    threshold: 30,
-    history: [
-      { date: "2023-06-01", level: 60 },
-      { date: "2023-06-15", level: 50 },
-      { date: "2023-07-01", level: 40 },
-      { date: "2023-07-15", level: 30 },
-      { date: "2023-08-01", level: 15 },
-    ],
-  },
-  {
-    _id: "6",
-    name: "Cookie Dough",
-    stock: 25,
-    unit: "kg",
-    unitCategory: "weight",
-    threshold: 20,
-    history: [
-      { date: "2023-06-01", level: 45 },
-      { date: "2023-06-15", level: 40 },
-      { date: "2023-07-01", level: 35 },
-      { date: "2023-07-15", level: 30 },
-      { date: "2023-08-01", level: 25 },
-    ],
-  },
-  {
-    _id: "7",
-    name: "Marshmallows",
-    stock: 12,
-    unit: "kg",
-    unitCategory: "weight",
-    threshold: 15,
-    history: [
-      { date: "2023-06-01", level: 30 },
-      { date: "2023-06-15", level: 25 },
-      { date: "2023-07-01", level: 20 },
-      { date: "2023-07-15", level: 15 },
-      { date: "2023-08-01", level: 12 },
-    ],
-  },
-  {
-    _id: "8",
-    name: "Nuts",
-    stock: 18,
-    unit: "kg",
-    unitCategory: "weight",
-    threshold: 15,
-    history: [
-      { date: "2023-06-01", level: 35 },
-      { date: "2023-06-15", level: 30 },
-      { date: "2023-07-01", level: 25 },
-      { date: "2023-07-15", level: 20 },
-      { date: "2023-08-01", level: 18 },
-    ],
-  },
-  {
-    _id: "9",
     name: "Milk",
-    stock: 60,
+    stock: 50,
     unit: "L",
-    unitCategory: "volume",
-    threshold: 40,
+    unitCategory: "dairy_liquid",
+    threshold: 10,
     history: [
       { date: "2023-06-01", level: 100 },
       { date: "2023-06-15", level: 90 },
       { date: "2023-07-01", level: 80 },
       { date: "2023-07-15", level: 70 },
-      { date: "2023-08-01", level: 60 },
+      { date: "2023-08-01", level: 50 },
     ],
   },
   {
-    _id: "10",
-    name: "Chocolate Chips",
-    stock: 22,
+    _id: "2",
+    name: "Sugar",
+    stock: 100,
     unit: "kg",
-    unitCategory: "weight",
-    threshold: 25,
+    unitCategory: "dry",
+    threshold: 20,
+    history: [
+      { date: "2023-06-01", level: 200 },
+      { date: "2023-06-15", level: 180 },
+      { date: "2023-07-01", level: 160 },
+      { date: "2023-07-15", level: 140 },
+      { date: "2023-08-01", level: 100 },
+    ],
+  },
+  {
+    _id: "3",
+    name: "Cream",
+    stock: 30,
+    unit: "L",
+    unitCategory: "dairy_liquid",
+    threshold: 5,
+    history: [
+      { date: "2023-06-01", level: 60 },
+      { date: "2023-06-15", level: 55 },
+      { date: "2023-07-01", level: 50 },
+      { date: "2023-07-15", level: 45 },
+      { date: "2023-08-01", level: 30 },
+    ],
+  },
+  {
+    _id: "4",
+    name: "Cocoa Powder",
+    stock: 25,
+    unit: "kg",
+    unitCategory: "dry",
+    threshold: 5,
+    history: [
+      { date: "2023-06-01", level: 50 },
+      { date: "2023-06-15", level: 45 },
+      { date: "2023-07-01", level: 40 },
+      { date: "2023-07-15", level: 35 },
+      { date: "2023-08-01", level: 25 },
+    ],
+  },
+  {
+    _id: "5",
+    name: "Chocolate Chips",
+    stock: 40,
+    unit: "kg",
+    unitCategory: "solid_mixin",
+    threshold: 10,
+    history: [
+      { date: "2023-06-01", level: 80 },
+      { date: "2023-06-15", level: 70 },
+      { date: "2023-07-01", level: 60 },
+      { date: "2023-07-15", level: 50 },
+      { date: "2023-08-01", level: 40 },
+    ],
+  },
+  {
+    _id: "6",
+    name: "Vanilla Extract",
+    stock: 15,
+    unit: "L",
+    unitCategory: "dairy_liquid",
+    threshold: 3,
+    history: [
+      { date: "2023-06-01", level: 30 },
+      { date: "2023-06-15", level: 25 },
+      { date: "2023-07-01", level: 20 },
+      { date: "2023-07-15", level: 15 },
+      { date: "2023-08-01", level: 15 },
+    ],
+  },
+  {
+    _id: "7",
+    name: "Waffle Cones",
+    stock: 500,
+    unit: "unit",
+    unitCategory: "packaging",
+    threshold: 100,
+    history: [
+      { date: "2023-06-01", level: 1000 },
+      { date: "2023-06-15", level: 900 },
+      { date: "2023-07-01", level: 800 },
+      { date: "2023-07-15", level: 700 },
+      { date: "2023-08-01", level: 500 },
+    ],
+  },
+  {
+    _id: "8",
+    name: "Sprinkles",
+    stock: 20,
+    unit: "kg",
+    unitCategory: "solid_mixin",
+    threshold: 5,
     history: [
       { date: "2023-06-01", level: 40 },
       { date: "2023-06-15", level: 35 },
       { date: "2023-07-01", level: 30 },
       { date: "2023-07-15", level: 25 },
-      { date: "2023-08-01", level: 22 },
+      { date: "2023-08-01", level: 20 },
+    ],
+  },
+  {
+    _id: "9",
+    name: "Cookie Dough",
+    stock: 30,
+    unit: "kg",
+    unitCategory: "solid_mixin",
+    threshold: 8,
+    history: [
+      { date: "2023-06-01", level: 60 },
+      { date: "2023-06-15", level: 55 },
+      { date: "2023-07-01", level: 50 },
+      { date: "2023-07-15", level: 45 },
+      { date: "2023-08-01", level: 30 },
+    ],
+  },
+  {
+    _id: "10",
+    name: "Nuts",
+    stock: 25,
+    unit: "kg",
+    unitCategory: "solid_mixin",
+    threshold: 5,
+    history: [
+      { date: "2023-06-01", level: 50 },
+      { date: "2023-06-15", level: 45 },
+      { date: "2023-07-01", level: 40 },
+      { date: "2023-07-15", level: 35 },
+      { date: "2023-08-01", level: 25 },
     ],
   },
   {
     _id: "11",
-    name: "Stabilizer",
-    stock: 8,
-    unit: "kg",
-    unitCategory: "weight",
-    threshold: 5,
+    name: "Ice Cream Cups",
+    stock: 1000,
+    unit: "unit",
+    unitCategory: "packaging",
+    threshold: 200,
     history: [
-      { date: "2023-06-01", level: 15 },
-      { date: "2023-06-15", level: 13 },
-      { date: "2023-07-01", level: 11 },
-      { date: "2023-07-15", level: 9 },
-      { date: "2023-08-01", level: 8 },
+      { date: "2023-06-01", level: 2000 },
+      { date: "2023-06-15", level: 1800 },
+      { date: "2023-07-01", level: 1600 },
+      { date: "2023-07-15", level: 1400 },
+      { date: "2023-08-01", level: 1000 },
     ],
   },
   {
     _id: "12",
-    name: "Salt",
-    stock: 30,
+    name: "Stabilizer",
+    stock: 10,
     unit: "kg",
-    unitCategory: "weight",
-    threshold: 10,
+    unitCategory: "dry",
+    threshold: 2,
     history: [
-      { date: "2023-06-01", level: 35 },
-      { date: "2023-06-15", level: 34 },
-      { date: "2023-07-01", level: 33 },
-      { date: "2023-07-15", level: 32 },
-      { date: "2023-08-01", level: 30 },
+      { date: "2023-06-01", level: 20 },
+      { date: "2023-06-15", level: 18 },
+      { date: "2023-07-01", level: 16 },
+      { date: "2023-07-15", level: 14 },
+      { date: "2023-08-01", level: 10 },
     ],
   },
 ];
@@ -224,12 +258,11 @@ export const recipes: Recipe[] = [
     _id: "1",
     name: "Vanilla",
     ingredients: [
-      { ingredientId: "1", amount: 5 }, // Cream
+      { ingredientId: "3", amount: 5 }, // Cream
       { ingredientId: "2", amount: 2 }, // Sugar
-      { ingredientId: "3", amount: 0.1 }, // Vanilla Extract
-      { ingredientId: "9", amount: 2 }, // Milk
-      { ingredientId: "11", amount: 0.05 }, // Stabilizer
-      { ingredientId: "12", amount: 0.01 }, // Salt
+      { ingredientId: "6", amount: 0.1 }, // Vanilla Extract
+      { ingredientId: "1", amount: 2 }, // Milk
+      { ingredientId: "12", amount: 0.05 }, // Stabilizer
     ],
     batches: [
       {
@@ -250,13 +283,12 @@ export const recipes: Recipe[] = [
     _id: "2",
     name: "Chocolate",
     ingredients: [
-      { ingredientId: "1", amount: 5 }, // Cream
+      { ingredientId: "3", amount: 5 }, // Cream
       { ingredientId: "2", amount: 2.5 }, // Sugar
       { ingredientId: "4", amount: 1 }, // Cocoa Powder
-      { ingredientId: "9", amount: 1.5 }, // Milk
-      { ingredientId: "10", amount: 0.5 }, // Chocolate Chips
-      { ingredientId: "11", amount: 0.05 }, // Stabilizer
-      { ingredientId: "12", amount: 0.01 }, // Salt
+      { ingredientId: "1", amount: 1.5 }, // Milk
+      { ingredientId: "5", amount: 0.5 }, // Chocolate Chips
+      { ingredientId: "12", amount: 0.05 }, // Stabilizer
     ],
     batches: [
       {
@@ -277,12 +309,10 @@ export const recipes: Recipe[] = [
     _id: "3",
     name: "Strawberry",
     ingredients: [
-      { ingredientId: "1", amount: 5 }, // Cream
+      { ingredientId: "3", amount: 5 }, // Cream
       { ingredientId: "2", amount: 3 }, // Sugar
-      { ingredientId: "5", amount: 2 }, // Strawberries
-      { ingredientId: "9", amount: 1 }, // Milk
-      { ingredientId: "11", amount: 0.05 }, // Stabilizer
-      { ingredientId: "12", amount: 0.01 }, // Salt
+      { ingredientId: "1", amount: 1 }, // Milk
+      { ingredientId: "12", amount: 0.05 }, // Stabilizer
     ],
     batches: [
       {
@@ -303,13 +333,12 @@ export const recipes: Recipe[] = [
     _id: "4",
     name: "Cookie Dough",
     ingredients: [
-      { ingredientId: "1", amount: 5 }, // Cream
+      { ingredientId: "3", amount: 5 }, // Cream
       { ingredientId: "2", amount: 2 }, // Sugar
-      { ingredientId: "6", amount: 2 }, // Cookie Dough
-      { ingredientId: "9", amount: 1.5 }, // Milk
-      { ingredientId: "10", amount: 0.3 }, // Chocolate Chips
-      { ingredientId: "11", amount: 0.05 }, // Stabilizer
-      { ingredientId: "12", amount: 0.01 }, // Salt
+      { ingredientId: "9", amount: 2 }, // Cookie Dough
+      { ingredientId: "1", amount: 1.5 }, // Milk
+      { ingredientId: "5", amount: 0.3 }, // Chocolate Chips
+      { ingredientId: "12", amount: 0.05 }, // Stabilizer
     ],
     batches: [
       {
@@ -330,15 +359,14 @@ export const recipes: Recipe[] = [
     _id: "5",
     name: "Rocky Road",
     ingredients: [
-      { ingredientId: "1", amount: 5 }, // Cream
+      { ingredientId: "3", amount: 5 }, // Cream
       { ingredientId: "2", amount: 2.5 }, // Sugar
       { ingredientId: "4", amount: 0.8 }, // Cocoa Powder
       { ingredientId: "7", amount: 1 }, // Marshmallows
-      { ingredientId: "8", amount: 1 }, // Nuts
-      { ingredientId: "9", amount: 1 }, // Milk
-      { ingredientId: "10", amount: 0.5 }, // Chocolate Chips
-      { ingredientId: "11", amount: 0.05 }, // Stabilizer
-      { ingredientId: "12", amount: 0.01 }, // Salt
+      { ingredientId: "10", amount: 1 }, // Nuts
+      { ingredientId: "1", amount: 1 }, // Milk
+      { ingredientId: "5", amount: 0.5 }, // Chocolate Chips
+      { ingredientId: "12", amount: 0.05 }, // Stabilizer
     ],
     batches: [
       {
@@ -358,22 +386,63 @@ export const recipes: Recipe[] = [
 ];
 
 export const suppliers: Supplier[] = [
-  { id: "1", name: "Dairy Delight", rating: 4.8, preferred: true },
-  { id: "2", name: "Sweet Supplies", rating: 4.5, preferred: true },
-  { id: "3", name: "Flavor Factory", rating: 4.2, preferred: false },
-  { id: "4", name: "Fresh Ingredients Inc.", rating: 4.6, preferred: true },
-  { id: "5", name: "Wholesale Foods", rating: 3.9, preferred: false },
+  {
+    id: "1",
+    name: "Dairy Direct",
+    email: "orders@dairydirect.com",
+    phone: "555-0123",
+    rating: 4.8,
+    preferred: true,
+    minimumOrderRequirements: {
+      value: 500,
+      quantity: 100,
+      unit: "L",
+    },
+    leadTime: 2
+  },
+  {
+    id: "2",
+    name: "Sweet Supplies Co",
+    email: "orders@sweetsupplies.com",
+    phone: "555-0124",
+    rating: 4.5,
+    preferred: true,
+    minimumOrderRequirements: {
+      value: 250,
+      quantity: 50,
+      unit: "kg",
+    },
+    leadTime: 3
+  },
+  {
+    id: "3",
+    name: "Package Plus",
+    email: "sales@packageplus.com",
+    phone: "555-0125",
+    rating: 4.2,
+    preferred: false,
+    minimumOrderRequirements: {
+      value: 1000,
+      quantity: 500,
+      unit: "unit",
+    },
+    leadTime: 5
+  }
 ];
+
+export const orders: Order[] = [];
 
 export const getIngredientById = (id: string): Ingredient | undefined => {
   return ingredients.find((ingredient) => ingredient._id === id);
 };
 
-export const getStockStatus = (ingredient: Ingredient): 'critical' | 'warning' | 'normal' => {
+export const getStockStatus = (
+  ingredient: Ingredient
+): "critical" | "warning" | "normal" => {
   const percentage = (ingredient.stock / ingredient.threshold) * 100;
-  if (percentage <= 50) return 'critical';
-  if (percentage <= 80) return 'warning';
-  return 'normal';
+  if (percentage <= 50) return "critical";
+  if (percentage <= 80) return "warning";
+  return "normal";
 };
 
 export const getIngredientsByUrgency = (): Ingredient[] => {
@@ -392,18 +461,22 @@ export const getSupplierById = (id: string): Supplier | undefined => {
   return suppliers.find((supplier) => supplier.id === id);
 };
 
-export const convertUnit = (value: number, fromUnit: string, toUnit: string): number => {
+export const convertUnit = (
+  value: number,
+  fromUnit: string,
+  toUnit: string
+): number => {
   // Simplified unit conversion - would be more complex in a real app
   if (fromUnit === toUnit) return value;
-  
+
   // Weight conversions
-  if (fromUnit === 'kg' && toUnit === 'g') return value * 1000;
-  if (fromUnit === 'g' && toUnit === 'kg') return value / 1000;
-  
+  if (fromUnit === "kg" && toUnit === "g") return value * 1000;
+  if (fromUnit === "g" && toUnit === "kg") return value / 1000;
+
   // Volume conversions
-  if (fromUnit === 'L' && toUnit === 'mL') return value * 1000;
-  if (fromUnit === 'mL' && toUnit === 'L') return value / 1000;
-  
+  if (fromUnit === "L" && toUnit === "mL") return value * 1000;
+  if (fromUnit === "mL" && toUnit === "L") return value / 1000;
+
   // Unsupported conversion
   console.warn(`Conversion from ${fromUnit} to ${toUnit} not supported`);
   return value;

@@ -42,7 +42,9 @@ export const UnitConverter: React.FC<UnitConverterProps> = ({
   const [toValue, setToValue] = useState<number>(0);
 
   // Get available units for the selected category
-  const getUnitsForCategory = (categoryType: UnitCategoryType): UnitDefinition[] => {
+  const getUnitsForCategory = (
+    categoryType: UnitCategoryType
+  ): UnitDefinition[] => {
     const category = unitCategories.find((c) => c.type === categoryType);
     return category ? category.units : [];
   };
@@ -80,17 +82,16 @@ export const UnitConverter: React.FC<UnitConverterProps> = ({
           <Label>Category</Label>
           <Select
             value={selectedCategory}
-            onValueChange={(value: UnitCategoryType) => setSelectedCategory(value)}
+            onValueChange={(value: UnitCategoryType) =>
+              setSelectedCategory(value)
+            }
           >
             <SelectTrigger>
               <SelectValue placeholder="Select category" />
             </SelectTrigger>
             <SelectContent>
               {unitCategories.map((category) => (
-                <SelectItem
-                  key={category.type}
-                  value={category.type}
-                >
+                <SelectItem key={category.type} value={category.type}>
                   {category.name}
                 </SelectItem>
               ))}
@@ -148,7 +149,7 @@ export const UnitConverter: React.FC<UnitConverterProps> = ({
                   </SelectContent>
                 </Select>
                 {toUnit && (
-                  <div className="py-2 px-3 bg-muted rounded text-sm min-w-[100px] text-right">
+                  <div className="py-2 px-3 bg-muted rounded text-sm min-w-[100px] text-left">
                     {toValue} {toUnit}
                   </div>
                 )}

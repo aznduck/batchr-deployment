@@ -21,12 +21,15 @@ const Login = () => {
 
   const onSubmit = async (data: LoginFormData) => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(data),
-      });
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/auth/login`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(data),
+        }
+      );
 
       const json = await res.json();
 
@@ -36,7 +39,8 @@ const Login = () => {
       toast({ title: "Success", description: "Logged in successfully!" });
       navigate("/");
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "Something went wrong";
+      const errorMessage =
+        err instanceof Error ? err.message : "Something went wrong";
       toast({
         variant: "destructive",
         title: "Login failed",
@@ -49,13 +53,17 @@ const Login = () => {
     <div className="flex items-center justify-center min-h-screen bg-background">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-2xl text-center">Sign In</CardTitle>
+          <CardTitle className="text-2xl text-center">Batchr</CardTitle>
+          <CardTitle className="text-lg text-center">Sign In</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div>
               <Label htmlFor="username">Username</Label>
-              <Input id="username" {...register("username", { required: true })} />
+              <Input
+                id="username"
+                {...register("username", { required: true })}
+              />
             </div>
             <div>
               <Label htmlFor="password">Password</Label>

@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Supplier,
-  suppliers as initialSuppliers,
-} from "@/lib/data";
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Supplier, suppliers as initialSuppliers } from "@/lib/data";
 import {
   ArrowRight,
   Check,
@@ -55,9 +58,12 @@ const Ordering = () => {
   useEffect(() => {
     const fetchIngredients = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/ingredients`, {
-          credentials: "include",
-        });
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/ingredients`,
+          {
+            credentials: "include",
+          }
+        );
         const data = await response.json();
         setIngredients(data);
       } catch (error) {
@@ -72,7 +78,7 @@ const Ordering = () => {
   // Get ingredients that need restocking
   const lowStockIngredients = ingredients
     .filter((ingredient) => ingredient.stock < ingredient.threshold)
-    .sort((a, b) => (a.stock / a.threshold) - (b.stock / b.threshold));
+    .sort((a, b) => a.stock / a.threshold - b.stock / b.threshold);
 
   const generateRandomPrice = (min: number, max: number): number => {
     return parseFloat((Math.random() * (max - min) + min).toFixed(2));
@@ -86,24 +92,23 @@ const Ordering = () => {
       if (!supplierPrices[ingredient._id]) {
         supplierPrices[ingredient._id] = {};
       }
-      
+
       // Base price with some variation per supplier
-      const basePrice = ingredient.unit === 'kg' || ingredient.unit === 'L' 
-        ? generateRandomPrice(15, 40)
-        : generateRandomPrice(3, 12);
-      
+      const basePrice =
+        ingredient.unit === "kg" || ingredient.unit === "L"
+          ? generateRandomPrice(15, 40)
+          : generateRandomPrice(3, 12);
+
       // Preferred suppliers offer better prices
-      const price = supplier.preferred
-        ? basePrice * 0.9
-        : basePrice;
-        
+      const price = supplier.preferred ? basePrice * 0.9 : basePrice;
+
       supplierPrices[ingredient._id][supplier.id] = price;
     });
   });
 
   const getBestSupplier = (ingredientId: string): Supplier | undefined => {
     if (!supplierPrices[ingredientId]) return undefined;
-    
+
     const bestSupplierId = Object.entries(supplierPrices[ingredientId]).reduce(
       (best, [supplierId, price]) => {
         if (!best.supplierId || price < best.price) {
@@ -113,19 +118,23 @@ const Ordering = () => {
       },
       { supplierId: "", price: Infinity }
     ).supplierId;
-    
+
     return suppliers.find((supplier) => supplier.id === bestSupplierId);
   };
 
   const addToCart = (ingredient: Ingredient) => {
     const bestSupplier = getBestSupplier(ingredient._id);
     if (!bestSupplier) return;
-    
+
     const price = supplierPrices[ingredient._id][bestSupplier.id];
-    const suggestedQuantity = Math.ceil(ingredient.threshold - ingredient.stock);
-    
+    const suggestedQuantity = Math.ceil(
+      ingredient.threshold - ingredient.stock
+    );
+
     setCart((prev) => {
-      const existingItem = prev.find((item) => item.ingredientId === ingredient._id);
+      const existingItem = prev.find(
+        (item) => item.ingredientId === ingredient._id
+      );
       if (existingItem) {
         return prev.map((item) =>
           item.ingredientId === ingredient._id
@@ -143,12 +152,14 @@ const Ordering = () => {
         },
       ];
     });
-    
+
     toast.success(`Added ${ingredient.name} to cart`);
   };
 
   const removeFromCart = (ingredientId: string) => {
-    setCart((prev) => prev.filter((item) => item.ingredientId !== ingredientId));
+    setCart((prev) =>
+      prev.filter((item) => item.ingredientId !== ingredientId)
+    );
   };
 
   const updateQuantity = (ingredientId: string, quantity: number) => {
@@ -162,10 +173,10 @@ const Ordering = () => {
 
   const placeOrder = async () => {
     setLoading(true);
-    
+
     // Simulate API call
     await new Promise((resolve) => setTimeout(resolve, 2000));
-    
+
     toast.success("Order placed successfully!");
     setCart([]);
     setLoading(false);
@@ -221,7 +232,8 @@ const Ordering = () => {
                             <div className="font-medium">{ingredient.name}</div>
                             <div className="text-sm text-muted-foreground">
                               Stock: {ingredient.stock} {ingredient.unit} /{" "}
-                              Threshold: {ingredient.threshold} {ingredient.unit}
+                              Threshold: {ingredient.threshold}{" "}
+                              {ingredient.unit}
                             </div>
                             {bestSupplier && (
                               <div className="flex items-center gap-2 text-sm">
@@ -229,9 +241,15 @@ const Ordering = () => {
                                   Best price:
                                 </span>
                                 <span className="font-medium">
-                                  ${supplierPrices[ingredient._id][bestSupplier.id].toFixed(2)}/{ingredient.unit}
+                                  $
+                                  {supplierPrices[ingredient._id][
+                                    bestSupplier.id
+                                  ].toFixed(2)}
+                                  /{ingredient.unit}
                                 </span>
-                                <span className="text-muted-foreground">from</span>
+                                <span className="text-muted-foreground">
+                                  from
+                                </span>
                                 <span className="font-medium flex items-center gap-1">
                                   {bestSupplier.name}
                                   {bestSupplier.preferred && (

@@ -3,6 +3,7 @@ export interface Ingredient {
   name: string;
   stock: number;
   unit: string;
+  unitCategory: string;
   threshold: number;
   history: {
     date: string;
@@ -41,6 +42,7 @@ export const ingredients: Ingredient[] = [
     name: "Cream",
     stock: 45,
     unit: "L",
+    unitCategory: "volume",
     threshold: 50,
     history: [
       { date: "2023-06-01", level: 100 },
@@ -55,6 +57,7 @@ export const ingredients: Ingredient[] = [
     name: "Sugar",
     stock: 120,
     unit: "kg",
+    unitCategory: "weight",
     threshold: 50,
     history: [
       { date: "2023-06-01", level: 200 },
@@ -69,6 +72,7 @@ export const ingredients: Ingredient[] = [
     name: "Vanilla Extract",
     stock: 5,
     unit: "L",
+    unitCategory: "volume",
     threshold: 10,
     history: [
       { date: "2023-06-01", level: 25 },
@@ -83,6 +87,7 @@ export const ingredients: Ingredient[] = [
     name: "Cocoa Powder",
     stock: 30,
     unit: "kg",
+    unitCategory: "weight",
     threshold: 25,
     history: [
       { date: "2023-06-01", level: 50 },
@@ -97,6 +102,7 @@ export const ingredients: Ingredient[] = [
     name: "Strawberries",
     stock: 15,
     unit: "kg",
+    unitCategory: "weight",
     threshold: 30,
     history: [
       { date: "2023-06-01", level: 60 },
@@ -111,6 +117,7 @@ export const ingredients: Ingredient[] = [
     name: "Cookie Dough",
     stock: 25,
     unit: "kg",
+    unitCategory: "weight",
     threshold: 20,
     history: [
       { date: "2023-06-01", level: 45 },
@@ -125,6 +132,7 @@ export const ingredients: Ingredient[] = [
     name: "Marshmallows",
     stock: 12,
     unit: "kg",
+    unitCategory: "weight",
     threshold: 15,
     history: [
       { date: "2023-06-01", level: 30 },
@@ -139,6 +147,7 @@ export const ingredients: Ingredient[] = [
     name: "Nuts",
     stock: 18,
     unit: "kg",
+    unitCategory: "weight",
     threshold: 15,
     history: [
       { date: "2023-06-01", level: 35 },
@@ -153,6 +162,7 @@ export const ingredients: Ingredient[] = [
     name: "Milk",
     stock: 60,
     unit: "L",
+    unitCategory: "volume",
     threshold: 40,
     history: [
       { date: "2023-06-01", level: 100 },
@@ -167,6 +177,7 @@ export const ingredients: Ingredient[] = [
     name: "Chocolate Chips",
     stock: 22,
     unit: "kg",
+    unitCategory: "weight",
     threshold: 25,
     history: [
       { date: "2023-06-01", level: 40 },
@@ -181,6 +192,7 @@ export const ingredients: Ingredient[] = [
     name: "Stabilizer",
     stock: 8,
     unit: "kg",
+    unitCategory: "weight",
     threshold: 5,
     history: [
       { date: "2023-06-01", level: 15 },
@@ -195,6 +207,7 @@ export const ingredients: Ingredient[] = [
     name: "Salt",
     stock: 30,
     unit: "kg",
+    unitCategory: "weight",
     threshold: 10,
     history: [
       { date: "2023-06-01", level: 35 },

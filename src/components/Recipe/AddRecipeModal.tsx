@@ -101,22 +101,32 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Final validation to ensure no duplicates
-    const uniqueIngredientIds = new Set(ingredients.map(ing => ing.ingredientId));
-    if (uniqueIngredientIds.size !== ingredients.length) {
-      toast.error("Recipe contains duplicate ingredients");
+
+    // Validate name
+    if (!name.trim()) {
+      toast.error("Recipe name is required");
       return;
     }
-    
+
+    // Validate ingredients
+    for (const ing of ingredients) {
+      if (!ing.ingredientId) {
+        toast.error("Please select an ingredient for all recipe items");
+        return;
+      }
+      if (ing.amount <= 0) {
+        toast.error("Amount must be greater than 0 for all ingredients");
+        return;
+      }
+    }
+
     onAddRecipe({
-      name,
-      ingredients,
+      name: name.trim(),
+      ingredients: ingredients.map(ing => ({
+        ...ing,
+        amount: parseFloat(ing.amount.toString())
+      })),
     });
-    
-    // Reset form
-    setName("");
-    setIngredients([]);
     onOpenChange(false);
   };
 
@@ -193,17 +203,18 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
                   <div className="col-span-4">
                     <Input
                       type="number"
-                      value={ingredient.amount}
+                      value={ingredient.amount || ""}
                       onChange={(e) =>
                         handleIngredientChange(
                           index,
                           "amount",
-                          Number(e.target.value)
+                          parseFloat(e.target.value) || 0
                         )
                       }
-                      placeholder="Amount"
+                      step="0.001"
                       min="0"
-                      required
+                      placeholder="Amount"
+                      className="w-24"
                     />
                   </div>
                   <div className="col-span-2">

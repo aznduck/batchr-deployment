@@ -140,6 +140,28 @@ const Inventory = () => {
     }
   };
 
+  const handleDeleteIngredient = async (ingredient: Ingredient) => {
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/ingredients/${ingredient._id}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to delete ingredient");
+      }
+
+      setIngredients(ingredients.filter((ing) => ing._id !== ingredient._id));
+      toast.success(`${ingredient.name} deleted successfully!`);
+    } catch (error) {
+      console.error("Error deleting ingredient:", error);
+      toast.error("Failed to delete ingredient");
+    }
+  };
+
   const handleClearSearch = () => {
     setSearchTerm("");
   };
@@ -263,6 +285,7 @@ const Inventory = () => {
                 key={ingredient._id}
                 ingredient={ingredient}
                 onEdit={() => handleEditIngredient(ingredient)}
+                onDelete={() => handleDeleteIngredient(ingredient)}
               />
             ))
           )}

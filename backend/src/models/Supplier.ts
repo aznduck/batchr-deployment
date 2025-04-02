@@ -1,11 +1,10 @@
 import mongoose from "mongoose";
 
 const SupplierSchema = new mongoose.Schema({
-  _id: String,
-  name: String,
-  rating: Number,
-  preferred: Boolean,
-  supplierLink: String,
+  name: { type: String, required: true },
+  rating: { type: Number, default: 0 },
+  preferred: { type: Boolean, default: false },
+  supplierLink: { type: String },
   owner: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
 });
 

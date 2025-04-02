@@ -122,7 +122,11 @@ router.post("/logout", (req: Request, res: Response) => {
 // GET /api/auth/session
 router.get("/session", async (req: Request, res: Response) => {
   try {
-    console.log("Session check:", req.session);
+    console.log("Session check:", {
+      id: req.sessionID,
+      user: req.session.user,
+      cookie: req.session.cookie,
+    });
     
     if (!req.session.user) {
       return res.status(401).json({ message: "Not authenticated" });
@@ -130,12 +134,18 @@ router.get("/session", async (req: Request, res: Response) => {
 
     const user = await User.findOne({ username: req.session.user.username });
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      // Clear invalid session
+      req.session.destroy((err) => {
+        if (err) console.error("Error destroying invalid session:", err);
+      });
+      return res.status(401).json({ message: "Not authenticated" });
     }
 
     res.json({
-      username: user.username,
-      isAdmin: user.isAdmin,
+      user: {
+        username: user.username,
+        isAdmin: user.isAdmin,
+      }
     });
   } catch (err) {
     console.error("Session error:", err);

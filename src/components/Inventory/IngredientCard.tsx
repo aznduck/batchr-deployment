@@ -1,16 +1,16 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CircularGauge } from "@/components/ui/CircularGauge";
 import { Ingredient, getStockStatus } from "@/lib/data";
-import { AreaChart, ChevronDown, ChevronUp, Edit } from "lucide-react";
+import { AreaChart, ChevronDown, ChevronUp, Edit, Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -23,18 +23,22 @@ import {
   Tooltip,
   CartesianGrid,
 } from "recharts";
+import { toast } from "sonner";
 
 interface IngredientCardProps {
   ingredient: Ingredient;
   onEdit?: (ingredient: Ingredient) => void;
+  onDelete?: (ingredient: Ingredient) => void;
 }
 
 export const IngredientCard: React.FC<IngredientCardProps> = ({
   ingredient,
   onEdit,
+  onDelete,
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const toggleExpanded = () => {
     setExpanded(!expanded);
@@ -44,6 +48,17 @@ export const IngredientCard: React.FC<IngredientCardProps> = ({
     if (onEdit) {
       onEdit(ingredient);
     }
+  };
+
+  const handleDeleteClick = () => {
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (onDelete) {
+      onDelete(ingredient);
+    }
+    setDeleteDialogOpen(false);
   };
 
   const status = getStockStatus(ingredient);
@@ -125,30 +140,21 @@ export const IngredientCard: React.FC<IngredientCardProps> = ({
           </div>
         </CardContent>
         <CardFooter className="flex justify-between pt-0">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-xs p-0 h-8"
-            onClick={toggleExpanded}
-          >
-            {expanded ? (
-              <>
-                <ChevronUp size={16} className="mr-1" /> Less
-              </>
-            ) : (
-              <>
-                <ChevronDown size={16} className="mr-1" /> More
-              </>
-            )}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-xs p-0 h-8"
-            onClick={handleEditClick}
-          >
-            <Edit size={16} className="mr-1" /> Edit
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="ghost" size="icon" onClick={handleEditClick}>
+              <Edit className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={handleDeleteClick}>
+              <Trash2 className="h-4 w-4 text-destructive" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={toggleExpanded}>
+              {expanded ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
         </CardFooter>
 
         {expanded && (
@@ -259,6 +265,26 @@ export const IngredientCard: React.FC<IngredientCardProps> = ({
               ))}
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Ingredient</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete {ingredient.name}? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmDelete}>
+              Delete
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

@@ -1,4 +1,3 @@
-
 export interface Ingredient {
   id: string;
   name: string;
@@ -28,6 +27,7 @@ export interface Supplier {
   name: string;
   rating: number;
   preferred: boolean;
+  supplierLink?: string;
 }
 
 // Generate initial mock data

@@ -34,16 +34,17 @@ export interface Recipe {
 }
 
 export interface Supplier {
-  id: string;
+  _id: string;
   name: string;
   email: string;
   phone: string;
   rating: number;
   preferred: boolean;
+  supplierLink?: string;
   minimumOrderRequirements?: {
+    quantity: number;
+    unit: string;
     value?: number;
-    quantity?: number;
-    unit?: string;
   };
   leadTime?: number; // in days
 }
@@ -387,47 +388,47 @@ export const recipes: Recipe[] = [
 
 export const suppliers: Supplier[] = [
   {
-    id: "1",
+    _id: "1",
     name: "Dairy Direct",
     email: "orders@dairydirect.com",
     phone: "555-0123",
     rating: 4.8,
     preferred: true,
     minimumOrderRequirements: {
-      value: 500,
       quantity: 100,
       unit: "L",
+      value: 500,
     },
-    leadTime: 2
+    leadTime: 2,
   },
   {
-    id: "2",
+    _id: "2",
     name: "Sweet Supplies Co",
     email: "orders@sweetsupplies.com",
     phone: "555-0124",
     rating: 4.5,
     preferred: true,
     minimumOrderRequirements: {
-      value: 250,
       quantity: 50,
       unit: "kg",
+      value: 250,
     },
-    leadTime: 3
+    leadTime: 3,
   },
   {
-    id: "3",
+    _id: "3",
     name: "Package Plus",
     email: "sales@packageplus.com",
     phone: "555-0125",
     rating: 4.2,
     preferred: false,
     minimumOrderRequirements: {
-      value: 1000,
       quantity: 500,
       unit: "unit",
+      value: 1000,
     },
-    leadTime: 5
-  }
+    leadTime: 5,
+  },
 ];
 
 export const orders: Order[] = [];
@@ -458,7 +459,7 @@ export const getRecipeById = (id: string): Recipe | undefined => {
 };
 
 export const getSupplierById = (id: string): Supplier | undefined => {
-  return suppliers.find((supplier) => supplier.id === id);
+  return suppliers.find((supplier) => supplier._id === id);
 };
 
 export const convertUnit = (

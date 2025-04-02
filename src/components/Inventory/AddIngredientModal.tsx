@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Ingredient } from "@/lib/data";
+import { Ingredient, Supplier } from "@/lib/data";
 import { UnitConverter } from "@/components/UnitConverter";
 import { UnitCategoryType } from "@/lib/units";
 import {
@@ -20,7 +20,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { suppliers } from "@/lib/data";
 
 interface AddIngredientModalProps {
   open: boolean;
@@ -67,8 +66,27 @@ export const AddIngredientModal: React.FC<AddIngredientModalProps> = ({
   const [minimumOrderQuantity, setMinimumOrderQuantity] = useState<
     number | undefined
   >();
-  const [supplierId, setSupplierId] = useState<string>("");
+  const [supplierId, setSupplierId] = useState<string>("unassigned");
   const [upc, setUpc] = useState<string>("");
+  const [userSuppliers, setUserSuppliers] = useState<Supplier[]>([]);
+
+  useEffect(() => {
+    // Fetch user's suppliers from the backend
+    const fetchSuppliers = async () => {
+      try {
+        const response = await fetch("/api/suppliers");
+        if (!response.ok) {
+          throw new Error("Failed to fetch suppliers");
+        }
+        const data = await response.json();
+        setUserSuppliers(data);
+      } catch (error) {
+        console.error("Error fetching suppliers:", error);
+      }
+    };
+
+    fetchSuppliers();
+  }, []);
 
   useEffect(() => {
     if (editingIngredient) {
@@ -78,8 +96,18 @@ export const AddIngredientModal: React.FC<AddIngredientModalProps> = ({
       setUnit(editingIngredient.unit);
       setUnitCategory(editingIngredient.unitCategory || "dairy_liquid");
       setMinimumOrderQuantity(editingIngredient.minimumOrderQuantity);
-      setSupplierId(editingIngredient.supplierId || "");
+      setSupplierId(editingIngredient.supplierId || "unassigned");
       setUpc(editingIngredient.upc || "");
+    } else {
+      // Reset form when not editing
+      setName("");
+      setStock(0);
+      setThreshold(0);
+      setUnit("");
+      setUnitCategory("dairy_liquid");
+      setMinimumOrderQuantity(undefined);
+      setSupplierId("unassigned");
+      setUpc("");
     }
   }, [editingIngredient]);
 
@@ -93,8 +121,8 @@ export const AddIngredientModal: React.FC<AddIngredientModalProps> = ({
       unit,
       unitCategory,
       minimumOrderQuantity,
-      supplierId,
-      upc,
+      supplierId: supplierId === "unassigned" ? undefined : supplierId,
+      upc: upc || undefined,
     };
 
     if (editingIngredient && onEditIngredient) {
@@ -102,16 +130,6 @@ export const AddIngredientModal: React.FC<AddIngredientModalProps> = ({
     } else {
       onAddIngredient(values);
     }
-
-    // Reset form
-    setName("");
-    setStock(0);
-    setThreshold(0);
-    setUnit("");
-    setUnitCategory("dairy_liquid");
-    setMinimumOrderQuantity(undefined);
-    setSupplierId("");
-    setUpc("");
 
     onOpenChange(false);
   };
@@ -145,38 +163,36 @@ export const AddIngredientModal: React.FC<AddIngredientModalProps> = ({
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                required
               />
             </div>
 
-            <UnitConverter
-              category={unitCategory}
-              initialUnit={unit}
-              onUnitChange={handleUnitChange}
-              value={stock}
-              onValueChange={(value) => setStock(value)}
-              showConverter={true}
-            />
+            <div className="space-y-2">
+              <Label>Unit Category</Label>
+              <UnitConverter
+                category={unitCategory}
+                initialUnit={unit}
+                onUnitChange={handleUnitChange}
+                showConverter={false}
+              />
+            </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="stock">Current Stock</Label>
+                <Label htmlFor="stock">Current Stock ({unit})</Label>
                 <Input
                   id="stock"
                   type="number"
                   value={stock}
                   onChange={(e) => setStock(Number(e.target.value))}
-                  required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="threshold">Threshold</Label>
+                <Label htmlFor="threshold">PAR Level ({unit})</Label>
                 <Input
                   id="threshold"
                   type="number"
                   value={threshold}
                   onChange={(e) => setThreshold(Number(e.target.value))}
-                  required
                 />
               </div>
             </div>
@@ -184,7 +200,7 @@ export const AddIngredientModal: React.FC<AddIngredientModalProps> = ({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="minimumOrderQuantity">
-                  Minimum Order Quantity
+                  Minimum Order Quantity ({unit})
                 </Label>
                 <Input
                   id="minimumOrderQuantity"
@@ -195,23 +211,27 @@ export const AddIngredientModal: React.FC<AddIngredientModalProps> = ({
                       e.target.value ? Number(e.target.value) : undefined
                     )
                   }
+                  placeholder="Optional"
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="supplier">Supplier</Label>
                 <Select
-                  onValueChange={(value) => setSupplierId(value)}
                   value={supplierId}
+                  onValueChange={(value) => setSupplierId(value)}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a supplier" />
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select supplier" />
                   </SelectTrigger>
                   <SelectContent>
-                    {suppliers.map((supplier) => (
-                      <SelectItem key={supplier.id} value={supplier.id}>
-                        {supplier.name}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="unassigned">No Supplier</SelectItem>
+                    {userSuppliers &&
+                      userSuppliers.map((supplier) => (
+                        <SelectItem key={supplier._id} value={supplier._id}>
+                          {supplier.name}
+                          {supplier.preferred && " (Preferred)"}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -223,6 +243,7 @@ export const AddIngredientModal: React.FC<AddIngredientModalProps> = ({
                 id="upc"
                 value={upc}
                 onChange={(e) => setUpc(e.target.value)}
+                placeholder="Optional"
               />
             </div>
           </div>

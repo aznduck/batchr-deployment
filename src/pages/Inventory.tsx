@@ -67,6 +67,10 @@ const Inventory = () => {
           stock: Number(values.stock),
           unit: values.unit,
           threshold: Number(values.threshold),
+          minimumOrderQuantity: values.minimumOrderQuantity ? Number(values.minimumOrderQuantity) : undefined,
+          supplierId: values.supplierId,
+          upc: values.upc,
+          unitCategory: values.unitCategory,
           history: [
             {
               date: new Date().toISOString().split("T")[0],
@@ -107,6 +111,10 @@ const Inventory = () => {
           stock: Number(values.stock),
           unit: values.unit,
           threshold: Number(values.threshold),
+          minimumOrderQuantity: values.minimumOrderQuantity ? Number(values.minimumOrderQuantity) : undefined,
+          supplierId: values.supplierId,
+          upc: values.upc,
+          unitCategory: values.unitCategory,
           history: [
             ...editingIngredient?.history,
             {

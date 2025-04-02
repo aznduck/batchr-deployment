@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Package, ShoppingCart } from "lucide-react";
+import { AlertCircle, Package, ShoppingCart, Building2 } from "lucide-react";
 import {
   getIngredientById,
   getStockStatus,
@@ -31,6 +31,11 @@ export default function Ordering() {
   const [cartItems, setCartItems] = useState<OrderItem[]>([]);
   const [lowStockItems, setLowStockItems] = useState<Ingredient[]>([]);
   const [userIngredients, setUserIngredients] = useState<Ingredient[]>([]);
+  const [userSuppliers, setUserSuppliers] = useState<Supplier[]>([]);
+  const [newSupplier, setNewSupplier] = useState({
+    name: "",
+    supplierLink: "",
+  });
   const [validationErrors, setValidationErrors] = useState<{
     [key: string]: string;
   }>({});
@@ -54,6 +59,24 @@ export default function Ordering() {
   }, []);
 
   useEffect(() => {
+    // Fetch user's suppliers from the backend
+    const fetchSuppliers = async () => {
+      try {
+        const response = await fetch("/api/suppliers");
+        if (!response.ok) {
+          throw new Error("Failed to fetch suppliers");
+        }
+        const data = await response.json();
+        setUserSuppliers(data);
+      } catch (error) {
+        console.error("Error fetching suppliers:", error);
+      }
+    };
+
+    fetchSuppliers();
+  }, []);
+
+  useEffect(() => {
     // Get low stock items from user's ingredients
     const lowStock = userIngredients.filter((item) => {
       const status = getStockStatus(item);
@@ -65,7 +88,7 @@ export default function Ordering() {
   // Group cart items by supplier
   const itemsBySupplier = useMemo(() => {
     return cartItems.reduce((acc, item) => {
-      const supplierId = item.supplier?.id || "unassigned";
+      const supplierId = item.supplier?._id || "unassigned";
       if (!acc[supplierId]) {
         acc[supplierId] = [];
       }
@@ -127,7 +150,7 @@ export default function Ordering() {
     // Calculate totals by supplier
     cartItems.forEach((item) => {
       if (item.supplier) {
-        const supplierId = item.supplier.id;
+        const supplierId = item.supplier._id;
         if (!supplierTotals[supplierId]) {
           supplierTotals[supplierId] = { quantity: 0, value: 0 };
         }
@@ -149,7 +172,7 @@ export default function Ordering() {
 
     // Check supplier minimum requirements
     Object.entries(supplierTotals).forEach(([supplierId, totals]) => {
-      const supplier = suppliers.find((s) => s.id === supplierId);
+      const supplier = suppliers.find((s) => s._id === supplierId);
       if (supplier?.minimumOrderRequirements) {
         const { quantity, value, unit } = supplier.minimumOrderRequirements;
 
@@ -183,7 +206,7 @@ export default function Ordering() {
         const supplier = items[0]?.supplier;
         const order: Order = {
           id: Math.random().toString(36).substr(2, 9),
-          supplierId: supplier?.id || "unassigned",
+          supplierId: supplier?._id || "unassigned",
           supplier: supplier,
           items: items.map((item) => ({
             ingredientId: item.ingredientId,
@@ -204,6 +227,60 @@ export default function Ordering() {
     console.log("Submitting orders:", ordersBySupplier);
     setCartItems([]);
     setValidationErrors({});
+  };
+
+  const addSupplier = async () => {
+    if (!newSupplier.name) {
+      setValidationErrors({ supplier: "Supplier name is required" });
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/suppliers", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(newSupplier),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to add supplier");
+      }
+
+      const addedSupplier = await response.json();
+      setUserSuppliers([...userSuppliers, addedSupplier]);
+      setNewSupplier({ name: "", supplierLink: "" });
+      setValidationErrors({});
+    } catch (error) {
+      console.error("Error adding supplier:", error);
+      setValidationErrors({ supplier: "Failed to add supplier" });
+    }
+  };
+
+  const togglePreferredSupplier = async (supplierId: string) => {
+    try {
+      const supplier = userSuppliers.find((s) => s._id === supplierId);
+      const response = await fetch(`/api/suppliers/${supplierId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ preferred: !supplier?.preferred }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update supplier");
+      }
+
+      setUserSuppliers(
+        userSuppliers.map((s) =>
+          s._id === supplierId ? { ...s, preferred: !s.preferred } : s
+        )
+      );
+    } catch (error) {
+      console.error("Error updating supplier:", error);
+    }
   };
 
   return (
@@ -382,6 +459,100 @@ export default function Ordering() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Supplier Management Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-blue-500" />
+              Supplier Management
+            </CardTitle>
+            <CardDescription>
+              Manage your suppliers and their preferences
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              {/* Add New Supplier */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border rounded-lg">
+                <div>
+                  <Label>Supplier Name</Label>
+                  <Input
+                    value={newSupplier.name}
+                    onChange={(e) =>
+                      setNewSupplier({ ...newSupplier, name: e.target.value })
+                    }
+                    placeholder="Enter supplier name"
+                  />
+                </div>
+                <div>
+                  <Label>Supplier Link</Label>
+                  <Input
+                    value={newSupplier.supplierLink}
+                    onChange={(e) =>
+                      setNewSupplier({
+                        ...newSupplier,
+                        supplierLink: e.target.value,
+                      })
+                    }
+                    placeholder="Enter supplier website"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <Button onClick={addSupplier}>Add Supplier</Button>
+                </div>
+                {validationErrors.supplier && (
+                  <Alert variant="destructive" className="col-span-3">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      {validationErrors.supplier}
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+
+              {/* Supplier List */}
+              <div className="space-y-4">
+                {userSuppliers.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-4">
+                    No suppliers added yet
+                  </p>
+                ) : (
+                  userSuppliers.map((supplier) => (
+                    <div
+                      key={supplier._id}
+                      className="flex justify-between items-center p-4 border rounded-lg"
+                    >
+                      <div>
+                        <div className="font-medium">{supplier.name}</div>
+                        {supplier.supplierLink && (
+                          <a
+                            href={supplier.supplierLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-blue-500 hover:underline"
+                          >
+                            Visit Website
+                          </a>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <Button
+                          variant={supplier.preferred ? "default" : "outline"}
+                          onClick={() => togglePreferredSupplier(supplier._id)}
+                        >
+                          {supplier.preferred
+                            ? "Preferred"
+                            : "Set as Preferred"}
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </Layout>
   );

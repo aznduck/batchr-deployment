@@ -14,11 +14,17 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [retryCount, setRetryCount] = useState(0);
+  const MAX_RETRIES = 3;
 
   const checkSession = async () => {
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/session`, {
         credentials: "include",
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+        },
       });
 
       if (!res.ok) {
@@ -26,7 +32,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setUser(null);
           return;
         }
+        
+        // If we get a 500 error and haven't exceeded retries, try again
+        if (res.status === 500 && retryCount < MAX_RETRIES) {
+          setRetryCount(prev => prev + 1);
+          setTimeout(checkSession, 1000 * Math.pow(2, retryCount)); // Exponential backoff
+          return;
+        }
+        
         throw new Error('Session check failed');
+      }
+
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error('Invalid response type');
       }
 
       const data = await res.json();
@@ -37,9 +56,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     } catch (error) {
       console.error('Session check error:', error);
-      setUser(null);
+      
+      // If we haven't exceeded retries, try again
+      if (retryCount < MAX_RETRIES) {
+        setRetryCount(prev => prev + 1);
+        setTimeout(checkSession, 1000 * Math.pow(2, retryCount)); // Exponential backoff
+      } else {
+        setUser(null);
+      }
     } finally {
-      setLoading(false);
+      if (retryCount >= MAX_RETRIES) {
+        setLoading(false);
+      }
     }
   };
 
@@ -49,22 +77,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const login = (username: string) => {
     setUser(username);
+    setRetryCount(0); // Reset retry count on successful login
   };
 
   const logout = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/logout`, {
-        method: "POST",
-        credentials: "include",
+      await fetch(`${import.meta.env.VITE_API_URL}/api/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
       });
-      
-      if (!res.ok) {
-        throw new Error('Logout failed');
-      }
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
       setUser(null);
+      setRetryCount(0);
     }
   };
 
@@ -72,8 +98,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     <AuthContext.Provider
       value={{
         user,
-        username: user,
         isAuthenticated: !!user,
+        username: user,
         login,
         logout,
         loading,
@@ -87,7 +113,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 };

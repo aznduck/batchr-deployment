@@ -21,7 +21,14 @@ const ensureAuth = async (req: AuthedRequest, res: Response, next: NextFunction)
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const userDoc = await User.findOne({ username: req.session.user.username });
+    // Update last access time
+    req.session.user.lastAccess = Date.now();
+
+    const userDoc = await User.findOne({ 
+      username: req.session.user.username,
+      _id: req.session.user.id 
+    });
+
     if (!userDoc) {
       console.log("User not found:", req.session.user.username);
       return res.status(404).json({ message: "User not found" });

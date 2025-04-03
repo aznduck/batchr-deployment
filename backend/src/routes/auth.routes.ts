@@ -10,7 +10,11 @@ const router = express.Router();
 // Extend session to include user property
 declare module "express-session" {
   interface SessionData {
-    user?: { username: string };
+    user?: { 
+      username: string; 
+      id: string; 
+      lastAccess: number 
+    };
   }
 }
 
@@ -66,36 +70,47 @@ router.post("/login", async (req: Request, res: Response) => {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    // Set session data directly
-    req.session.user = { username: user.username };
-    console.log("Login: Setting session user to:", req.session.user);
-
-    // Save session explicitly
-    req.session.save((err) => {
+    // Regenerate session to prevent session fixation
+    req.session.regenerate((err) => {
       if (err) {
-        console.error("Session save error:", err);
-        return res.status(500).json({ message: "Session save failed" });
+        console.error("Session regeneration error:", err);
+        return res.status(500).json({ message: "Session error" });
       }
 
-      // Send response after session is saved
-      res.status(200).json({
-        message: "Login successful",
-        user: {
-          username: user.username,
-          isAdmin: user.isAdmin,
-        },
-      });
+      // Set session data
+      req.session.user = { 
+        username: user.username,
+        id: user._id.toString(),
+        lastAccess: Date.now()
+      };
 
-      // Seed data for admin if needed (after response sent)
-      if (user.username === "admin") {
-        Ingredient.exists({ owner: user._id }).then((hasIngredients) => {
-          if (!hasIngredients) {
-            seedAdminData(user._id.toString()).then(() => {
-              console.log(" Seeded data for admin!");
-            });
-          }
+      // Save session explicitly
+      req.session.save((err) => {
+        if (err) {
+          console.error("Session save error:", err);
+          return res.status(500).json({ message: "Session save failed" });
+        }
+
+        // Send response after session is saved
+        res.status(200).json({
+          message: "Login successful",
+          user: {
+            username: user.username,
+            isAdmin: user.isAdmin,
+          },
         });
-      }
+
+        // Seed data for admin if needed (after response sent)
+        if (user.username === "admin") {
+          Ingredient.exists({ owner: user._id }).then((hasIngredients) => {
+            if (!hasIngredients) {
+              seedAdminData(user._id.toString()).then(() => {
+                console.log(" Seeded data for admin!");
+              });
+            }
+          });
+        }
+      });
     });
   } catch (err) {
     console.error("Login error:", err);
@@ -105,18 +120,23 @@ router.post("/login", async (req: Request, res: Response) => {
 
 // POST /api/auth/logout
 router.post("/logout", (req: Request, res: Response) => {
-  if (req.session) {
+  // Regenerate the session to prevent session fixation
+  req.session.regenerate((err) => {
+    if (err) {
+      console.error("Session regeneration error during logout:", err);
+      return res.status(500).json({ message: "Logout failed" });
+    }
+
+    // Destroy the session
     req.session.destroy((err) => {
       if (err) {
-        console.error("Logout error:", err);
-        return res.status(500).json({ message: "Error logging out" });
+        console.error("Session destruction error:", err);
+        return res.status(500).json({ message: "Logout failed" });
       }
       res.clearCookie("batchr.sid");
       res.status(200).json({ message: "Logged out successfully" });
     });
-  } else {
-    res.status(200).json({ message: "Already logged out" });
-  }
+  });
 });
 
 // GET /api/auth/session

@@ -10,6 +10,7 @@ import {
   MenuIcon,
   X,
   LogOut,
+  Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
@@ -26,6 +27,7 @@ const navItems: NavItem[] = [
   { name: "Recipes", path: "/recipes", icon: UtensilsCrossed },
   { name: "Production", path: "/production", icon: ClipboardList },
   { name: "Ordering", path: "/ordering", icon: ShoppingCart },
+  { name: "Planning", path: "/planning", icon: Calendar },
 ];
 
 export const Navbar: React.FC = () => {

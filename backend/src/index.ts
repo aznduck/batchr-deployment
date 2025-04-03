@@ -48,7 +48,11 @@ app.use(express.json());
 
 declare module "express-session" {
   interface SessionData {
-    user?: { username: string };
+    user?: {
+      username: string;
+      id: string;
+      lastAccess: number;
+    };
   }
 }
 
@@ -62,6 +66,10 @@ app.use(
       mongoUrl: process.env.MONGO_URI!,
       ttl: 24 * 60 * 60, // 1 day in seconds
       autoRemove: 'native',
+      touchAfter: 24 * 3600, // Only update session every 24 hours unless data changes
+      crypto: {
+        secret: false // Disable encryption since we're having issues
+      }
     }),
     cookie: {
       maxAge: 1000 * 60 * 60 * 24, // 1 day
@@ -91,6 +99,11 @@ mongoose
   .connect(process.env.MONGO_URI!)
   .then(async () => {
     console.log("Connected to MongoDB");
+
+    // Clear all existing sessions to avoid any encryption-related issues
+    if (mongoose.connection.db) {
+      await mongoose.connection.db.collection('sessions').deleteMany({});
+    }
 
     const existing = await User.findOne({ username: "admin" });
     if (!existing) {

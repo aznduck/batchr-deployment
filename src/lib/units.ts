@@ -27,6 +27,13 @@ export const unitCategories: UnitCategoryDefinition[] = [
     type: "dairy_liquid",
     units: [
       {
+        symbol: "cups",
+        name: "Cups",
+        category: "dairy_liquid",
+        baseUnit: "L",
+        conversionFactor: 0.236588,
+      },
+      {
         symbol: "gal",
         name: "Gallons",
         category: "dairy_liquid",
@@ -64,6 +71,20 @@ export const unitCategories: UnitCategoryDefinition[] = [
       {
         symbol: "mL",
         name: "Milliliters",
+        category: "dairy_liquid",
+        baseUnit: "L",
+        conversionFactor: 0.001,
+      },
+      {
+        symbol: "tube",
+        name: "Tubes",
+        category: "dairy_liquid",
+        baseUnit: "L",
+        conversionFactor: 0.5,
+      },
+      {
+        symbol: "drop",
+        name: "Drops",
         category: "dairy_liquid",
         baseUnit: "L",
         conversionFactor: 0.001,

@@ -46,6 +46,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
 }) => {
   const [name, setName] = useState("");
   const [ingredients, setIngredients] = useState<RecipeIngredient[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Reset form when opening modal or switching recipes
   useEffect(() => {
@@ -181,22 +182,34 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
                         <SelectValue placeholder="Select ingredient" />
                       </SelectTrigger>
                       <SelectContent>
-                        {availableIngredients.map((ing) => {
-                          const isSelected = ingredients.some(
-                            (i) => i.ingredientId === ing._id && i !== ingredient
-                          );
-                          return (
-                            <SelectItem 
-                              key={ing._id} 
-                              value={ing._id}
-                              disabled={isSelected}
-                              className={isSelected ? "opacity-50" : ""}
-                            >
-                              {ing.name} ({ing.unit})
-                              {isSelected && " - Already added"}
-                            </SelectItem>
-                          );
-                        })}
+                        <div className="sticky top-0 p-2 bg-white border-b">
+                          <Input
+                            placeholder="Search ingredients..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="h-8"
+                          />
+                        </div>
+                        {availableIngredients
+                          .filter((ing) =>
+                            ing.name.toLowerCase().includes(searchQuery.toLowerCase())
+                          )
+                          .map((ing) => {
+                            const isSelected = ingredients.some(
+                              (i) => i.ingredientId === ing._id && i !== ingredient
+                            );
+                            return (
+                              <SelectItem 
+                                key={ing._id} 
+                                value={ing._id}
+                                disabled={isSelected}
+                                className={isSelected ? "opacity-50" : ""}
+                              >
+                                {ing.name} ({ing.unit})
+                                {isSelected && " - Already added"}
+                              </SelectItem>
+                            );
+                          })}
                       </SelectContent>
                     </Select>
                   </div>

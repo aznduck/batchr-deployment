@@ -1,4 +1,3 @@
-// src/pages/Register.tsx
 import React from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -8,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/context/AuthContext";
+import { authApi } from "@/lib/api";
 
 interface RegisterFormData {
   username: string;
@@ -21,20 +21,7 @@ const Register = () => {
 
   const onSubmit = async (data: RegisterFormData) => {
     try {
-      const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/auth/register`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify(data),
-        }
-      );
-
-      const json = await res.json();
-
-      if (!res.ok) throw new Error(json.message || "Registration failed");
-
+      await authApi.register(data);
       login(data.username); // Auto-login after register
       toast({
         title: "Success",

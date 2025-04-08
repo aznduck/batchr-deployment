@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Calendar as CalendarIcon,
+  CalendarIcon,
   Clipboard,
   FileText,
   PlusCircle,
@@ -35,14 +35,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Recipe } from "@/lib/data";
-
-interface ProductionEntry {
-  date: Date;
-  recipeId: string;
-  quantity: number;
-  notes: string;
-  supervisor: string;
-}
+import { ProductionEntry, recipesApi, productionApi } from "@/lib/api";
 
 const Production = () => {
   const [date, setDate] = useState<Date>(new Date());
@@ -51,30 +44,18 @@ const Production = () => {
   const [notes, setNotes] = useState<string>("");
   const [supervisor, setSupervisor] = useState<string>("");
   const [recipes, setRecipes] = useState<Recipe[]>([]);
-  const [productionLog, setProductionLog] = useState<ProductionEntry[]>([]);
+  const [productionLog, setProductionLog] = useState<any[]>([]);
 
   // Fetch recipes and production log on mount
   useEffect(() => {
     const fetchData = async () => {
       try {
         // Fetch recipes
-        const recipesRes = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/recipes`,
-          {
-            credentials: "include",
-          }
-        );
-        const recipesData = await recipesRes.json();
+        const recipesData = await recipesApi.getAll();
         setRecipes(recipesData);
 
         // Fetch production log
-        const logRes = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/production`,
-          {
-            credentials: "include",
-          }
-        );
-        const logData = await logRes.json();
+        const logData = await productionApi.getAll();
         setProductionLog(
           logData.map((entry: any) => ({
             ...entry,
@@ -123,24 +104,7 @@ const Production = () => {
 
     try {
       // Add production log and update ingredient stocks
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/production`,
-        {
-          method: "POST",
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(newEntry),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to add production log");
-      }
-
-      // Get updated production log from response
-      const updatedLog = await response.json();
+      const updatedLog = await productionApi.create(newEntry);
 
       // Update local state with the new production log
       setProductionLog([

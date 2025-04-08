@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Recipe, Ingredient } from "@/lib/data";
 import { AddRecipeModal } from "@/components/Recipe/AddRecipeModal";
+import { recipesApi, ingredientsApi } from "@/lib/api";
 
 const Recipes = () => {
   const initialRecipes: Recipe[] = [];
@@ -20,10 +21,7 @@ const Recipes = () => {
   useEffect(() => {
     const fetchRecipes = async () => {
       try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/recipes`, {
-          credentials: "include",
-        });
-        const data = await res.json();
+        const data = await recipesApi.getAll();
         setRecipes(data);
       } catch (err) {
         console.error("Failed to fetch recipes", err);
@@ -32,13 +30,7 @@ const Recipes = () => {
 
     const fetchIngredients = async () => {
       try {
-        const res = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/ingredients`,
-          {
-            credentials: "include",
-          }
-        );
-        const data = await res.json();
+        const data = await ingredientsApi.getAll();
         setIngredients(data);
       } catch (err) {
         console.error("Failed to fetch ingredients", err);
@@ -62,23 +54,7 @@ const Recipes = () => {
     ingredients: { ingredientId: string; amount: number }[];
   }) => {
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/recipes`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify(values),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to create recipe");
-      }
-
-      const newRecipe = await response.json();
+      const newRecipe = await recipesApi.create(values);
       setRecipes([...recipes, newRecipe]);
       toast.success("Recipe added successfully!");
     } catch (error) {
@@ -94,23 +70,7 @@ const Recipes = () => {
     if (!editingRecipe) return;
 
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/recipes/${editingRecipe._id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify(values),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to update recipe");
-      }
-
-      const updatedRecipe = await response.json();
+      const updatedRecipe = await recipesApi.update(editingRecipe._id, values);
       setRecipes(
         recipes.map((r) => (r._id === updatedRecipe._id ? updatedRecipe : r))
       );

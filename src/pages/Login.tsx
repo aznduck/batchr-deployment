@@ -1,4 +1,3 @@
-// src/pages/Login.tsx
 import React from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -8,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/context/AuthContext";
+import { authApi } from "@/lib/api";
 
 interface LoginFormData {
   username: string;
@@ -21,20 +21,7 @@ const Login = () => {
 
   const onSubmit = async (data: LoginFormData) => {
     try {
-      const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/auth/login`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify(data),
-        }
-      );
-
-      const json = await res.json();
-
-      if (!res.ok) throw new Error(json.message || "Login failed");
-
+      const result = await authApi.login(data);
       login(data.username); // Set username in context
       toast({ title: "Success", description: "Logged in successfully!" });
       navigate("/");
@@ -78,7 +65,7 @@ const Login = () => {
             </Button>
           </form>
           <div className="mt-4 text-center text-sm">
-            Don’t have an account?{" "}
+            Don't have an account?{" "}
             <Link to="/register" className="text-primary hover:underline">
               Sign Up
             </Link>

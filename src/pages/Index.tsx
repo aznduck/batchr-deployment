@@ -24,27 +24,8 @@ import {
   Tooltip,
   CartesianGrid,
 } from "recharts";
-
-interface Ingredient {
-  _id: string;
-  name: string;
-  stock: number;
-  unit: string;
-  threshold: number;
-  history: { date: string; level: number }[];
-}
-
-interface Recipe {
-  _id: string;
-  name: string;
-  ingredients: { ingredientId: string; amount: number }[];
-  batches: {
-    date: string;
-    supervisor: string;
-    quantity: number;
-    notes?: string;
-  }[];
-}
+import { ingredientsApi, recipesApi, productionApi } from "@/lib/api";
+import { Ingredient, Recipe } from "@/lib/data";
 
 interface Production {
   _id: string;
@@ -73,22 +54,10 @@ const Index = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [ingRes, recRes, prodRes] = await Promise.all([
-          fetch(`${import.meta.env.VITE_API_URL}/api/ingredients`, {
-            credentials: "include",
-          }),
-          fetch(`${import.meta.env.VITE_API_URL}/api/recipes`, {
-            credentials: "include",
-          }),
-          fetch(`${import.meta.env.VITE_API_URL}/api/production`, {
-            credentials: "include",
-          }),
-        ]);
-
         const [ingData, recData, prodData] = await Promise.all([
-          ingRes.json(),
-          recRes.json(),
-          prodRes.json(),
+          ingredientsApi.getAll(),
+          recipesApi.getAll(),
+          productionApi.getAll(),
         ]);
 
         // make sure these are arrays

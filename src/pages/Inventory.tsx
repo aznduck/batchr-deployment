@@ -15,6 +15,7 @@ import { FilterX, Plus, Search, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Ingredient } from "@/lib/data";
+import { ingredientsApi } from "@/lib/api";
 
 const Inventory = () => {
   const initialIngredients: Ingredient[] = []; // define an empty array or populate with initial data
@@ -30,13 +31,7 @@ const Inventory = () => {
   useEffect(() => {
     const fetchIngredients = async () => {
       try {
-        const res = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/ingredients`,
-          {
-            credentials: "include",
-          }
-        );
-        const data = await res.json();
+        const data = await ingredientsApi.getAll();
         setIngredients(data);
       } catch (err) {
         console.error("Failed to fetch ingredients", err);
@@ -56,40 +51,31 @@ const Inventory = () => {
 
   const handleAddIngredient = async (values) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/ingredients`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          name: values.name,
-          stock: Number(values.stock),
-          unit: values.unit,
-          threshold: Number(values.threshold),
-          minimumOrderQuantity: values.minimumOrderQuantity ? Number(values.minimumOrderQuantity) : undefined,
-          supplierId: values.supplierId,
-          upc: values.upc,
-          unitCategory: values.unitCategory,
-          history: [
-            {
-              date: new Date().toISOString().split("T")[0],
-              level: Number(values.stock),
-            },
-          ],
-        }),
-      });
+      const ingredientData = {
+        name: values.name,
+        stock: Number(values.stock),
+        unit: values.unit,
+        threshold: Number(values.threshold),
+        minimumOrderQuantity: values.minimumOrderQuantity
+          ? Number(values.minimumOrderQuantity)
+          : undefined,
+        supplierId: values.supplierId,
+        upc: values.upc,
+        unitCategory: values.unitCategory,
+        history: [
+          {
+            date: new Date().toISOString().split("T")[0],
+            level: Number(values.stock),
+          },
+        ],
+      };
 
-      if (!response.ok) {
-        throw new Error('Failed to create ingredient');
-      }
-
-      const newIngredient = await response.json();
+      const newIngredient = await ingredientsApi.create(ingredientData);
       setIngredients([...ingredients, newIngredient]);
-      toast.success('Ingredient added successfully!');
+      toast.success("Ingredient added successfully!");
     } catch (error) {
-      console.error('Error adding ingredient:', error);
-      toast.error('Failed to add ingredient');
+      console.error("Error adding ingredient:", error);
+      toast.error("Failed to add ingredient");
     }
   };
 
@@ -100,60 +86,40 @@ const Inventory = () => {
 
   const handleUpdateIngredient = async (id: string, values: any) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/ingredients/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          name: values.name,
-          stock: Number(values.stock),
-          unit: values.unit,
-          threshold: Number(values.threshold),
-          minimumOrderQuantity: values.minimumOrderQuantity ? Number(values.minimumOrderQuantity) : undefined,
-          supplierId: values.supplierId,
-          upc: values.upc,
-          unitCategory: values.unitCategory,
-          history: [
-            ...editingIngredient?.history,
-            {
-              date: new Date().toISOString().split("T")[0],
-              level: Number(values.stock),
-            },
-          ],
-        }),
-      });
+      const ingredientData = {
+        name: values.name,
+        stock: Number(values.stock),
+        unit: values.unit,
+        threshold: Number(values.threshold),
+        minimumOrderQuantity: values.minimumOrderQuantity
+          ? Number(values.minimumOrderQuantity)
+          : undefined,
+        supplierId: values.supplierId,
+        upc: values.upc,
+        unitCategory: values.unitCategory,
+        history: [
+          ...(editingIngredient?.history || []),
+          {
+            date: new Date().toISOString().split("T")[0],
+            level: Number(values.stock),
+          },
+        ],
+      };
 
-      if (!response.ok) {
-        throw new Error('Failed to update ingredient');
-      }
-
-      const updatedIngredient = await response.json();
-      setIngredients(ingredients.map(ing => 
-        ing._id === id ? updatedIngredient : ing
-      ));
-      toast.success('Ingredient updated successfully!');
+      const updatedIngredient = await ingredientsApi.update(id, ingredientData);
+      setIngredients(
+        ingredients.map((ing) => (ing._id === id ? updatedIngredient : ing))
+      );
+      toast.success("Ingredient updated successfully!");
     } catch (error) {
-      console.error('Error updating ingredient:', error);
-      toast.error('Failed to update ingredient');
+      console.error("Error updating ingredient:", error);
+      toast.error("Failed to update ingredient");
     }
   };
 
   const handleDeleteIngredient = async (ingredient: Ingredient) => {
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/ingredients/${ingredient._id}`,
-        {
-          method: "DELETE",
-          credentials: "include",
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to delete ingredient");
-      }
-
+      await ingredientsApi.delete(ingredient._id);
       setIngredients(ingredients.filter((ing) => ing._id !== ingredient._id));
       toast.success(`${ingredient.name} deleted successfully!`);
     } catch (error) {
@@ -245,10 +211,12 @@ const Inventory = () => {
               </Select>
             </div>
 
-            <Button onClick={() => {
-              setEditingIngredient(null);
-              setAddModalOpen(true);
-            }}>
+            <Button
+              onClick={() => {
+                setEditingIngredient(null);
+                setAddModalOpen(true);
+              }}
+            >
               <Plus className="h-4 w-4 mr-2" />
               Add
             </Button>

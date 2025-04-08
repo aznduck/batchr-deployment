@@ -5,6 +5,7 @@ import { Ingredient, Recipe } from "@/lib/data";
 import { AlertTriangle, CheckCircle, Clock, TrendingDown } from "lucide-react";
 import { Link } from "react-router-dom";
 import { CardDescription } from "@/components/ui/card";
+import { ingredientsApi, recipesApi, productionApi } from "@/lib/api";
 
 export const Stats = () => {
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
@@ -14,23 +15,11 @@ export const Stats = () => {
     const fetchData = async () => {
       try {
         // Fetch ingredients
-        const ingredientsRes = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/ingredients`,
-          {
-            credentials: "include",
-          }
-        );
-        const ingredientsData = await ingredientsRes.json();
+        const ingredientsData = await ingredientsApi.getAll();
         setIngredients(ingredientsData);
 
         // Fetch recipes
-        const recipesRes = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/recipes`,
-          {
-            credentials: "include",
-          }
-        );
-        const recipesData = await recipesRes.json();
+        const recipesData = await recipesApi.getAll();
         setRecipes(recipesData);
       } catch (err) {
         console.error("Failed to fetch data for stats:", err);

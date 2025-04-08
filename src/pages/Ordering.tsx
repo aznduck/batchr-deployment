@@ -21,6 +21,8 @@ import {
   OrderItem,
   Order,
 } from "@/lib/data";
+import { ingredientsApi, suppliersApi } from "@/lib/api";
+import { toast } from "sonner";
 
 interface CartItem extends OrderItem {
   ingredient: Ingredient;
@@ -35,20 +37,18 @@ export default function Ordering() {
   const [newSupplier, setNewSupplier] = useState({
     name: "",
     supplierLink: "",
+    preferred: false,
   });
   const [validationErrors, setValidationErrors] = useState<{
     [key: string]: string;
   }>({});
+  const [showAddSupplier, setShowAddSupplier] = useState(false);
 
   useEffect(() => {
     // Fetch user's ingredients from the backend
     const fetchIngredients = async () => {
       try {
-        const response = await fetch("/api/ingredients");
-        if (!response.ok) {
-          throw new Error("Failed to fetch ingredients");
-        }
-        const data = await response.json();
+        const data = await ingredientsApi.getAll();
         setUserIngredients(data);
       } catch (error) {
         console.error("Error fetching ingredients:", error);
@@ -62,11 +62,7 @@ export default function Ordering() {
     // Fetch user's suppliers from the backend
     const fetchSuppliers = async () => {
       try {
-        const response = await fetch("/api/suppliers");
-        if (!response.ok) {
-          throw new Error("Failed to fetch suppliers");
-        }
-        const data = await response.json();
+        const data = await suppliersApi.getAll();
         setUserSuppliers(data);
       } catch (error) {
         console.error("Error fetching suppliers:", error);
@@ -229,57 +225,61 @@ export default function Ordering() {
     setValidationErrors({});
   };
 
-  const addSupplier = async () => {
-    if (!newSupplier.name) {
-      setValidationErrors({ supplier: "Supplier name is required" });
+  const handleAddSupplier = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Basic validation
+    const newErrors: { [key: string]: string } = {};
+    if (!newSupplier.name.trim()) {
+      newErrors.name = "Name is required";
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setValidationErrors(newErrors);
       return;
     }
 
     try {
-      const response = await fetch("/api/suppliers", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(newSupplier),
+      const newSupplierData = await suppliersApi.create(newSupplier);
+      setUserSuppliers([...userSuppliers, newSupplierData]);
+      toast.success("Supplier added successfully!");
+      
+      // Reset form and close dialog
+      setNewSupplier({
+        name: "",
+        supplierLink: "",
+        preferred: false,
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to add supplier");
-      }
-
-      const addedSupplier = await response.json();
-      setUserSuppliers([...userSuppliers, addedSupplier]);
-      setNewSupplier({ name: "", supplierLink: "" });
       setValidationErrors({});
+      setShowAddSupplier(false);
     } catch (error) {
-      console.error("Error adding supplier:", error);
-      setValidationErrors({ supplier: "Failed to add supplier" });
+      console.error("Failed to add supplier:", error);
+      toast.error("Failed to add supplier");
     }
   };
 
   const togglePreferredSupplier = async (supplierId: string) => {
     try {
       const supplier = userSuppliers.find((s) => s._id === supplierId);
-      const response = await fetch(`/api/suppliers/${supplierId}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ preferred: !supplier?.preferred }),
+      if (!supplier) return;
+      
+      const updatedSupplier = await suppliersApi.update(supplierId, {
+        preferred: !supplier.preferred,
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to update supplier");
-      }
-
+      // Update the suppliers list with the updated supplier
       setUserSuppliers(
-        userSuppliers.map((s) =>
-          s._id === supplierId ? { ...s, preferred: !s.preferred } : s
-        )
+        userSuppliers.map((s) => (s._id === supplierId ? updatedSupplier : s))
+      );
+
+      toast.success(
+        `${updatedSupplier.name} is ${
+          updatedSupplier.preferred ? "now" : "no longer"
+        } a preferred supplier`
       );
     } catch (error) {
-      console.error("Error updating supplier:", error);
+      console.error("Failed to update supplier:", error);
+      toast.error("Failed to update supplier preference");
     }
   };
 
@@ -490,16 +490,13 @@ export default function Ordering() {
                   <Input
                     value={newSupplier.supplierLink}
                     onChange={(e) =>
-                      setNewSupplier({
-                        ...newSupplier,
-                        supplierLink: e.target.value,
-                      })
+                      setNewSupplier({ ...newSupplier, supplierLink: e.target.value })
                     }
                     placeholder="Enter supplier website"
                   />
                 </div>
                 <div className="flex items-end">
-                  <Button onClick={addSupplier}>Add Supplier</Button>
+                  <Button onClick={handleAddSupplier}>Add Supplier</Button>
                 </div>
                 {validationErrors.supplier && (
                   <Alert variant="destructive" className="col-span-3">

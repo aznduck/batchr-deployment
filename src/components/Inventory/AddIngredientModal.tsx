@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { suppliersApi } from "@/lib/api";
 
 interface AddIngredientModalProps {
   open: boolean;
@@ -74,11 +75,7 @@ export const AddIngredientModal: React.FC<AddIngredientModalProps> = ({
     // Fetch user's suppliers from the backend
     const fetchSuppliers = async () => {
       try {
-        const response = await fetch("/api/suppliers");
-        if (!response.ok) {
-          throw new Error("Failed to fetch suppliers");
-        }
-        const data = await response.json();
+        const data = await suppliersApi.getAll();
         setUserSuppliers(data);
       } catch (error) {
         console.error("Error fetching suppliers:", error);

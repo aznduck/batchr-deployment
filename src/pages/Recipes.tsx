@@ -163,7 +163,7 @@ const Recipes = () => {
                   recipe={recipe}
                   ingredients={ingredients}
                   onEdit={setEditingRecipe}
-                  className="h-[290px]"
+                  className="h-[400px]"
                 />
               ))}
             </div>

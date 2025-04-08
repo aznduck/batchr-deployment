@@ -46,7 +46,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
 }) => {
   const [name, setName] = useState("");
   const [ingredients, setIngredients] = useState<RecipeIngredient[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQueries, setSearchQueries] = useState<string[]>([]);
 
   // Reset form when opening modal or switching recipes
   useEffect(() => {
@@ -64,18 +64,28 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
         toast.warning("Duplicate ingredients were removed from the recipe");
       }
       setIngredients(uniqueIngredients);
+      setSearchQueries(new Array(uniqueIngredients.length).fill(""));
     } else {
       setName("");
       setIngredients([]);
+      setSearchQueries([]);
     }
   }, [editingRecipe, open]);
 
   const handleAddIngredient = () => {
     setIngredients([...ingredients, { ingredientId: "", amount: 0 }]);
+    setSearchQueries([...searchQueries, ""]);
   };
 
   const handleRemoveIngredient = (index: number) => {
     setIngredients(ingredients.filter((_, i) => i !== index));
+    setSearchQueries(searchQueries.filter((_, i) => i !== index));
+  };
+
+  const handleSearchQueryChange = (index: number, value: string) => {
+    const newSearchQueries = [...searchQueries];
+    newSearchQueries[index] = value;
+    setSearchQueries(newSearchQueries);
   };
 
   const handleIngredientChange = (index: number, field: keyof RecipeIngredient, value: string | number) => {
@@ -133,15 +143,15 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[75vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>{editingRecipe ? 'Edit Recipe' : 'Add New Recipe'}</DialogTitle>
           <DialogDescription>
             {editingRecipe ? 'Edit the recipe details and its ingredients.' : 'Enter the recipe details and its required ingredients.'}
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <div className="grid gap-6 py-4">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+          <div className="grid gap-6 py-4 overflow-y-auto pr-2">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="name" className="text-right">
                 Name
@@ -181,18 +191,36 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
                       <SelectTrigger>
                         <SelectValue placeholder="Select ingredient" />
                       </SelectTrigger>
-                      <SelectContent>
-                        <div className="sticky top-0 p-2 bg-white border-b">
+                      <SelectContent 
+                        onCloseAutoFocus={(e) => e.preventDefault()}
+                        position="popper"
+                      >
+                        <div className="sticky top-0 p-2 bg-white border-b z-10" 
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <Input
                             placeholder="Search ingredients..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
+                            value={searchQueries[index] || ""}
+                            onChange={(e) => handleSearchQueryChange(index, e.target.value)}
                             className="h-8"
+                            // Completely isolate the input from Select's keyboard controls
+                            onClick={(e) => e.stopPropagation()}
+                            onKeyDown={(e) => {
+                              // Prevent the dropdown from closing on Enter key press
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                              }
+                              // Stop all keyboard navigation events from bubbling up
+                              e.stopPropagation();
+                            }}
+                            // Prevent the dropdown from controlling focus
+                            onFocus={(e) => e.stopPropagation()}
+                            onBlur={(e) => e.stopPropagation()}
                           />
                         </div>
                         {availableIngredients
                           .filter((ing) =>
-                            ing.name.toLowerCase().includes(searchQuery.toLowerCase())
+                            ing.name.toLowerCase().includes(searchQueries[index]?.toLowerCase() || "")
                           )
                           .map((ing) => {
                             const isSelected = ingredients.some(

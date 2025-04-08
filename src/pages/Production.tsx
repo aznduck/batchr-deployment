@@ -134,16 +134,6 @@ const Production = () => {
 
   const getRecipeColor = (recipeName: string) => {
     switch (recipeName.toLowerCase()) {
-      case "vanilla":
-        return "vanilla";
-      case "chocolate":
-        return "chocolate";
-      case "strawberry":
-        return "strawberry";
-      case "cookie dough":
-        return "cookie";
-      case "rocky road":
-        return "rocky";
       default:
         return "ice";
     }

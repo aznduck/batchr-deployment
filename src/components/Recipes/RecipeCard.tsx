@@ -1,16 +1,31 @@
 import React, { useState } from "react";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Recipe, Ingredient } from "@/lib/data";
 import { cn } from "@/lib/utils";
-import { History, Info, Users, Edit } from "lucide-react";
+import { History, Info, Users, Edit, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 interface RecipeCardProps {
   recipe: Recipe;
   className?: string;
   ingredients: Ingredient[];
   onEdit?: (recipe: Recipe) => void;
+  onDelete?: (recipe: Recipe) => void;
 }
 
 export const RecipeCard: React.FC<RecipeCardProps> = ({
@@ -18,8 +33,10 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
   className,
   ingredients,
   onEdit,
+  onDelete,
 }) => {
   const [flipped, setFlipped] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const toggleFlip = () => {
     setFlipped(!flipped);
@@ -30,19 +47,21 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
     onEdit?.(recipe);
   };
 
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (onDelete) {
+      onDelete(recipe);
+    }
+    setDeleteDialogOpen(false);
+  };
+
   // Get color based on recipe name
   const getRecipeColor = () => {
     switch (recipe.name.toLowerCase()) {
-      case "vanilla":
-        return "vanilla";
-      case "chocolate":
-        return "chocolate";
-      case "strawberry":
-        return "strawberry";
-      case "cookie dough":
-        return "cookie";
-      case "rocky road":
-        return "rocky";
       default:
         return "ice";
     }
@@ -72,23 +91,37 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
               <CardTitle className={`text-${color}-foreground`}>
                 {recipe.name}
               </CardTitle>
-              <Button
-                variant="ghost"
-                size="icon"
-                className={`h-8 w-8 text-${color}-foreground/70 hover:text-${color}-foreground hover:bg-${color}/60`}
-                onClick={handleEdit}
-              >
-                <Edit size={16} />
-              </Button>
+              <div className="flex space-x-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={`h-8 w-8 text-${color}-foreground/70 hover:text-${color}-foreground hover:bg-${color}/60`}
+                  onClick={handleEdit}
+                >
+                  <Edit size={16} />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={`h-8 w-8 text-${color}-foreground/70 hover:text-danger hover:bg-${color}/60`}
+                  onClick={handleDeleteClick}
+                >
+                  <Trash2 size={16} />
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="pb-2">
-            <h4 className={`text-sm font-medium mb-2 text-${color}-foreground/80`}>
+            <h4
+              className={`text-sm font-medium mb-2 text-${color}-foreground/80`}
+            >
               Ingredients
             </h4>
             <ul className="space-y-1 text-sm">
               {recipe.ingredients.map((item) => {
-                const ingredient = ingredients.find(i => i._id === item.ingredientId);
+                const ingredient = ingredients.find(
+                  (i) => i._id === item.ingredientId
+                );
                 return (
                   ingredient && (
                     <li
@@ -129,20 +162,33 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
           <CardHeader className="pb-2">
             <div className="flex justify-between items-center">
               <CardTitle className={`text-${color}-foreground`}>
-                {recipe.name} <span className="text-base font-normal">History</span>
+                {recipe.name}{" "}
+                <span className="text-base font-normal">History</span>
               </CardTitle>
-              <Button
-                variant="ghost"
-                size="icon"
-                className={`h-8 w-8 text-${color}-foreground/70 hover:text-${color}-foreground hover:bg-${color}/60`}
-                onClick={handleEdit}
-              >
-                <Edit size={16} />
-              </Button>
+              <div className="flex space-x-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={`h-8 w-8 text-${color}-foreground/70 hover:text-${color}-foreground hover:bg-${color}/60`}
+                  onClick={handleEdit}
+                >
+                  <Edit size={16} />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={`h-8 w-8 text-${color}-foreground/70 hover:text-danger hover:bg-${color}/60`}
+                  onClick={handleDeleteClick}
+                >
+                  <Trash2 size={16} />
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="pb-2">
-            <h4 className={`text-sm font-medium mb-2 text-${color}-foreground/80`}>
+            <h4
+              className={`text-sm font-medium mb-2 text-${color}-foreground/80`}
+            >
               Recent Batches
             </h4>
             <ul className="space-y-3 text-sm">
@@ -185,6 +231,29 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
           </CardFooter>
         </Card>
       </div>
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Recipe</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete {recipe.name}? This action cannot
+              be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmDelete}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

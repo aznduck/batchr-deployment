@@ -82,6 +82,17 @@ const Recipes = () => {
     }
   };
 
+  const handleDeleteRecipe = async (recipe: Recipe) => {
+    try {
+      await recipesApi.delete(recipe._id);
+      setRecipes(recipes.filter((r) => r._id !== recipe._id));
+      toast.success(`Recipe "${recipe.name}" deleted successfully!`);
+    } catch (error) {
+      console.error("Error deleting recipe:", error);
+      toast.error("Failed to delete recipe");
+    }
+  };
+
   // Filter recipes based on search term
   const filteredRecipes = searchTerm
     ? recipes.filter((recipe) =>
@@ -156,13 +167,14 @@ const Recipes = () => {
               </Button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {filteredRecipes.map((recipe) => (
                 <RecipeCard
                   key={recipe._id}
                   recipe={recipe}
                   ingredients={ingredients}
                   onEdit={setEditingRecipe}
+                  onDelete={handleDeleteRecipe}
                   className="h-[400px]"
                 />
               ))}

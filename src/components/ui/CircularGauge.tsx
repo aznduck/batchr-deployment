@@ -1,4 +1,3 @@
-
 import React from "react";
 import { cn } from "@/lib/utils";
 
@@ -38,10 +37,17 @@ export const CircularGauge: React.FC<CircularGaugeProps> = ({
     return "stroke-emerald-500";
   };
 
-  const formattedValue = valueFormatter ? valueFormatter(value) : value.toString();
+  const formattedValue = valueFormatter
+    ? valueFormatter(value)
+    : value.toString();
 
   return (
-    <div className={cn("relative flex flex-col items-center justify-center", className)}>
+    <div
+      className={cn(
+        "relative flex flex-col items-center justify-center",
+        className
+      )}
+    >
       <svg width={size} height={size} className="transform -rotate-90">
         {/* Background circle */}
         <circle
@@ -52,7 +58,7 @@ export const CircularGauge: React.FC<CircularGaugeProps> = ({
           strokeWidth={thickness}
           className="stroke-muted"
         />
-        
+
         {/* Foreground circle */}
         <circle
           cx={size / 2}
@@ -61,23 +67,19 @@ export const CircularGauge: React.FC<CircularGaugeProps> = ({
           fill="none"
           strokeWidth={thickness}
           strokeDasharray={circumference}
-          strokeDashoffset={strokeDashoffset}
+          strokeDashoffset={strokeDashoffset.toString()}
           strokeLinecap="round"
           className={cn("transition-all duration-500 ease-out", getColor())}
         />
       </svg>
-      
+
       {/* Center content */}
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
         {showValue && (
-          <span className="text-lg font-medium">
-            {formattedValue}
-          </span>
+          <span className="text-lg font-medium">{formattedValue}</span>
         )}
         {label && (
-          <span className="text-xs text-muted-foreground">
-            {label}
-          </span>
+          <span className="text-xs text-muted-foreground">{label}</span>
         )}
       </div>
     </div>

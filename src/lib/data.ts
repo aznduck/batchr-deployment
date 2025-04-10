@@ -24,10 +24,29 @@ export interface Recipe {
     ingredientId: string;
     amount: number;
   }[];
+  // New fields for production planning
+  currentInventory?: number;
+  weeklyProductionGoal?: number;
+  plannedProduction?: number;
+  goalAchievement?: number;
+  // Enhanced batch structure
   batches: {
+    batchNumber?: string;
     date: string;
     supervisor: string;
     quantity: number;
+    notes?: string;
+    machineId?: string;
+    createdBy?: string;
+    status?: "planned" | "in-progress" | "completed";
+  }[];
+  // Version control and audit fields
+  createdBy?: string;
+  createdAt?: Date;
+  versionHistory?: {
+    modifiedBy: string;
+    modifiedAt: Date;
+    changes: Record<string, any>;
     notes?: string;
   }[];
   owner?: string;

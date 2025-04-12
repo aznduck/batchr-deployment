@@ -63,14 +63,14 @@ This document outlines the step-by-step plan for implementing a production plann
   - Production goal management
   - Achievement status calculations
 
-- [ ] 2.4 Design and implement Production Plan API endpoints
+- [x] 2.4 Design and implement Production Plan API endpoints
 
   - Create weekly plan
   - Update plan
   - Complete plan
   - Export/import plans
 
-- [ ] 2.5 Design and implement Production Block API endpoints
+- [x] 2.5 Design and implement Production Block API endpoints
 
   - Schedule blocks
   - Move/reschedule blocks

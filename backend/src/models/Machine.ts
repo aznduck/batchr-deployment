@@ -1,48 +1,44 @@
 import mongoose from "mongoose";
 
 const MachineSchema = new mongoose.Schema({
-  name: { 
-    type: String, 
-    required: true 
-  },
-  tubCapacity: { 
-    type: Number, 
+  name: {
+    type: String,
     required: true,
-    min: 1
   },
-  productionTime: { 
-    type: Number, 
+  tubCapacity: {
+    type: Number,
     required: true,
-    default: 30,  // Default 30 minutes
-    min: 1
+    min: 1,
   },
-  assignedEmployeeId: { 
-    type: mongoose.Schema.Types.ObjectId, 
+  productionTime: {
+    type: Number,
+    required: true,
+    default: 30, // Default 30 minutes
+    min: 1,
+  },
+  assignedEmployeeId: {
+    type: mongoose.Schema.Types.ObjectId,
     ref: "Employee",
-    default: null
+    default: null,
   },
-  status: { 
-    type: String, 
+  status: {
+    type: String,
     enum: ["available", "in-use", "maintenance"],
-    default: "available"
-  },
-  lastMaintenance: {
-    type: Date,
-    default: null
+    default: "available",
   },
   notes: {
     type: String,
-    default: ""
+    default: "",
   },
-  owner: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: "User", 
-    required: true 
+  owner: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
   },
-  createdAt: { 
-    type: Date, 
-    default: Date.now 
-  }
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
 });
 
 export default mongoose.model("Machine", MachineSchema);

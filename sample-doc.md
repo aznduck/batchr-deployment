@@ -77,7 +77,7 @@ This document outlines the step-by-step plan for implementing a production plann
   - Status updates
   - Conflict detection
 
-- [ ] 2.6 Implement business logic for production time calculation
+- [x] 2.6 Implement business logic for production time calculation
   - Machine-specific timing
   - Prep and cleaning time handling
   - Overlap prevention

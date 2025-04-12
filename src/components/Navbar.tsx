@@ -27,7 +27,7 @@ const navItems: NavItem[] = [
   { name: "Recipes", path: "/recipes", icon: UtensilsCrossed },
   { name: "Production", path: "/production", icon: ClipboardList },
   { name: "Ordering", path: "/ordering", icon: ShoppingCart },
-  { name: "Planning", path: "/planning", icon: Calendar },
+  { name: "Planning", path: "/production-planning", icon: Calendar },
 ];
 
 export const Navbar: React.FC = () => {

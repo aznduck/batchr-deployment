@@ -20,29 +20,35 @@ export const calculateProductionTime = async (
 }> => {
   // Get machine details for time calculation
   const machine = await Machine.findById(machineId);
-  
+
   if (!machine) {
     throw new Error("Machine not found");
   }
-  
+
   // Calculate production time based on machine capacity and quantity
-  // Formula: (quantity / tubCapacity) * productionTime per batch + setup time between batches
+  // Formula: (quantity / tubCapacity) * productionTime per batch
   const batches = Math.ceil(quantity / machine.tubCapacity);
-  const batchSetupTime = 5; // 5 minutes between batches
-  const productionMinutes = batches * machine.productionTime + (batches - 1) * batchSetupTime;
-  
+  const productionMinutes = batches * machine.productionTime;
+
   // Calculate recommended prep and cleaning times based on machine and quantity
   // Larger production runs or larger machines need more prep time
-  const recommendedPrepMinutes = Math.max(15, Math.round(machine.tubCapacity * 2.5));
-  
+  const recommendedPrepMinutes = Math.max(
+    15,
+    Math.round(machine.tubCapacity * 2.5)
+  );
+
   // Cleaning time also scales with machine size
-  const recommendedCleaningMinutes = Math.max(20, Math.round(machine.tubCapacity * 3));
-  
+  const recommendedCleaningMinutes = Math.max(
+    20,
+    Math.round(machine.tubCapacity * 3)
+  );
+
   return {
     productionMinutes,
     recommendedPrepMinutes,
     recommendedCleaningMinutes,
-    totalMinutes: productionMinutes + recommendedPrepMinutes + recommendedCleaningMinutes
+    totalMinutes:
+      productionMinutes + recommendedPrepMinutes + recommendedCleaningMinutes,
   };
 };
 
@@ -82,27 +88,27 @@ export const isTimeSlotAvailable = async (
     status: { $nin: ["completed", "cancelled"] },
     $or: [
       // Overlapping time ranges
-      { startTime: { $lt: endTime }, endTime: { $gt: startTime } }
-    ]
+      { startTime: { $lt: endTime }, endTime: { $gt: startTime } },
+    ],
   };
-  
+
   // Exclude the current block if we're updating
   if (excludeBlockId) {
     query._id = { $ne: excludeBlockId };
   }
-  
+
   // Check machine conflicts
   const machineConflicts = await ProductionBlock.countDocuments({
     ...query,
-    machineId
+    machineId,
   });
-  
+
   // Check employee conflicts
   const employeeConflicts = await ProductionBlock.countDocuments({
     ...query,
-    employeeId
+    employeeId,
   });
-  
+
   // Return true if no conflicts
   return machineConflicts === 0 && employeeConflicts === 0;
 };
@@ -133,17 +139,26 @@ export const suggestProductionSchedule = async (
   try {
     // Calculate required times
     const timeCalculation = await calculateProductionTime(machineId, quantity);
-    
+
     // Generate a suggested schedule based on preferred start time
     const prepStartTime = new Date(preferredStartTime);
-    const prepEndTime = calculateEndTime(prepStartTime, timeCalculation.recommendedPrepMinutes);
-    
+    const prepEndTime = calculateEndTime(
+      prepStartTime,
+      timeCalculation.recommendedPrepMinutes
+    );
+
     const productionStartTime = new Date(prepEndTime);
-    const productionEndTime = calculateEndTime(productionStartTime, timeCalculation.productionMinutes);
-    
+    const productionEndTime = calculateEndTime(
+      productionStartTime,
+      timeCalculation.productionMinutes
+    );
+
     const cleaningStartTime = new Date(productionEndTime);
-    const cleaningEndTime = calculateEndTime(cleaningStartTime, timeCalculation.recommendedCleaningMinutes);
-    
+    const cleaningEndTime = calculateEndTime(
+      cleaningStartTime,
+      timeCalculation.recommendedCleaningMinutes
+    );
+
     // Check for conflicts
     const prepAvailable = await isTimeSlotAvailable(
       machineId,
@@ -152,7 +167,7 @@ export const suggestProductionSchedule = async (
       prepEndTime,
       ownerId
     );
-    
+
     const productionAvailable = await isTimeSlotAvailable(
       machineId,
       employeeId,
@@ -160,7 +175,7 @@ export const suggestProductionSchedule = async (
       productionEndTime,
       ownerId
     );
-    
+
     const cleaningAvailable = await isTimeSlotAvailable(
       machineId,
       employeeId,
@@ -168,33 +183,36 @@ export const suggestProductionSchedule = async (
       cleaningEndTime,
       ownerId
     );
-    
+
     if (!prepAvailable || !productionAvailable || !cleaningAvailable) {
       return {
         success: false,
-        message: "The suggested schedule has conflicts. Try a different start time."
+        message:
+          "The suggested schedule has conflicts. Try a different start time.",
       };
     }
-    
+
     return {
       success: true,
       prepBlock: {
         startTime: prepStartTime,
-        endTime: prepEndTime
+        endTime: prepEndTime,
       },
       productionBlock: {
         startTime: productionStartTime,
-        endTime: productionEndTime
+        endTime: productionEndTime,
       },
       cleaningBlock: {
         startTime: cleaningStartTime,
-        endTime: cleaningEndTime
-      }
+        endTime: cleaningEndTime,
+      },
     };
   } catch (error) {
     return {
       success: false,
-      message: `Error generating schedule: ${error instanceof Error ? error.message : 'Unknown error'}`
+      message: `Error generating schedule: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
     };
   }
 };

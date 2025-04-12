@@ -102,3 +102,20 @@ export interface ProductionBlockUpdateInput {
   actualEndTime?: Date;
   actualQuantity?: number;
 }
+
+// Time calculation result for production planning
+export interface TimeCalculation {
+  productionMinutes: number;
+  recommendedPrepMinutes: number;
+  recommendedCleaningMinutes: number;
+  totalMinutes: number;
+}
+
+// Schedule suggestion result for production planning
+export interface ScheduleSuggestion {
+  success: boolean;
+  prepBlock?: { startTime: Date; endTime: Date };
+  productionBlock?: { startTime: Date; endTime: Date };
+  cleaningBlock?: { startTime: Date; endTime: Date };
+  message?: string;
+}

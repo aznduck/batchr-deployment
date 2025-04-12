@@ -17,9 +17,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Trash } from "lucide-react";
+import { Plus, Trash, ChefHat } from "lucide-react";
 import { Ingredient, Recipe } from "@/lib/data";
 import { toast } from "sonner";
+import { AddIngredientModal } from "@/components/Inventory/AddIngredientModal";
+import { ingredientsApi } from "@/lib/api";
 
 interface RecipeIngredient {
   ingredientId: string;
@@ -35,6 +37,7 @@ interface AddRecipeModalProps {
   }) => void;
   availableIngredients: Ingredient[];
   editingRecipe?: Recipe | null;
+  onRefreshIngredients?: () => void;
 }
 
 export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
@@ -43,23 +46,29 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
   onAddRecipe,
   availableIngredients,
   editingRecipe,
+  onRefreshIngredients,
 }) => {
   const [name, setName] = useState("");
   const [ingredients, setIngredients] = useState<RecipeIngredient[]>([]);
   const [searchQueries, setSearchQueries] = useState<string[]>([]);
+  const [showIngredientModal, setShowIngredientModal] = useState(false);
+  const [refreshIngredients, setRefreshIngredients] = useState(false);
 
   // Reset form when opening modal or switching recipes
   useEffect(() => {
     if (editingRecipe) {
       setName(editingRecipe.name);
       // Remove any duplicate ingredients that might exist in the data
-      const uniqueIngredients = editingRecipe.ingredients.reduce((acc, curr) => {
-        if (!acc.some(item => item.ingredientId === curr.ingredientId)) {
-          acc.push(curr);
-        }
-        return acc;
-      }, [] as RecipeIngredient[]);
-      
+      const uniqueIngredients = editingRecipe.ingredients.reduce(
+        (acc, curr) => {
+          if (!acc.some((item) => item.ingredientId === curr.ingredientId)) {
+            acc.push(curr);
+          }
+          return acc;
+        },
+        [] as RecipeIngredient[]
+      );
+
       if (uniqueIngredients.length !== editingRecipe.ingredients.length) {
         toast.warning("Duplicate ingredients were removed from the recipe");
       }
@@ -71,6 +80,37 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
       setSearchQueries([]);
     }
   }, [editingRecipe, open]);
+
+  // Function to handle new ingredient creation
+  const handleAddNewIngredient = async (values: {
+    name: string;
+    stock: number;
+    threshold: number;
+    unit: string;
+    unitCategory: any;
+    minimumOrderQuantity?: number;
+    supplierId?: string;
+    upc?: string;
+  }) => {
+    try {
+      await ingredientsApi.create(values);
+      toast.success(`Ingredient "${values.name}" added successfully`);
+      setRefreshIngredients(true);
+    } catch (error) {
+      console.error("Error adding ingredient:", error);
+      toast.error("Failed to add ingredient");
+    }
+  };
+
+  // Refresh available ingredients when needed
+  useEffect(() => {
+    if (refreshIngredients) {
+      // This will trigger the parent component to refresh the ingredients list
+      // The actual API call happens in the parent component
+      setRefreshIngredients(false);
+      onRefreshIngredients?.();
+    }
+  }, [refreshIngredients, onRefreshIngredients]);
 
   const handleAddIngredient = () => {
     setIngredients([...ingredients, { ingredientId: "", amount: 0 }]);
@@ -88,21 +128,25 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
     setSearchQueries(newSearchQueries);
   };
 
-  const handleIngredientChange = (index: number, field: keyof RecipeIngredient, value: string | number) => {
+  const handleIngredientChange = (
+    index: number,
+    field: keyof RecipeIngredient,
+    value: string | number
+  ) => {
     const newIngredients = [...ingredients];
-    
+
     if (field === "ingredientId" && typeof value === "string") {
       // Check if this ingredient is already used in another slot
       const isDuplicate = ingredients.some(
         (ing, i) => i !== index && ing.ingredientId === value
       );
-      
+
       if (isDuplicate) {
         toast.error("This ingredient is already added to the recipe");
         return;
       }
     }
-    
+
     newIngredients[index] = {
       ...newIngredients[index],
       [field]: value,
@@ -133,9 +177,9 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
 
     onAddRecipe({
       name: name.trim(),
-      ingredients: ingredients.map(ing => ({
+      ingredients: ingredients.map((ing) => ({
         ...ing,
-        amount: parseFloat(ing.amount.toString())
+        amount: parseFloat(ing.amount.toString()),
       })),
     });
     onOpenChange(false);
@@ -144,13 +188,32 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[75vh] overflow-hidden flex flex-col">
-        <DialogHeader>
-          <DialogTitle>{editingRecipe ? 'Edit Recipe' : 'Add New Recipe'}</DialogTitle>
-          <DialogDescription>
-            {editingRecipe ? 'Edit the recipe details and its ingredients.' : 'Enter the recipe details and its required ingredients.'}
-          </DialogDescription>
+        <DialogHeader className="flex flex-row items-center justify-between">
+          <div>
+            <DialogTitle>
+              {editingRecipe ? "Edit Recipe" : "Add New Recipe"}
+            </DialogTitle>
+            <DialogDescription className="mt-3">
+              {editingRecipe
+                ? "Edit the recipe details and its ingredients."
+                : "Enter the recipe details and its required ingredients."}
+            </DialogDescription>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setShowIngredientModal(true)}
+            className="whitespace-nowrap border-blue-600 bg-blue-50 hover:bg-blue-50 hover:text-blue-700"
+          >
+            <ChefHat className="h-4 w-4 mr-2" />
+            Create Ingredient
+          </Button>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col flex-1 overflow-hidden"
+        >
           <div className="grid gap-6 py-4 overflow-y-auto pr-2">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="name" className="text-right">
@@ -180,7 +243,10 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
               </div>
 
               {ingredients.map((ingredient, index) => (
-                <div key={index} className="grid grid-cols-12 gap-4 items-center">
+                <div
+                  key={index}
+                  className="grid grid-cols-12 gap-4 items-center"
+                >
                   <div className="col-span-6">
                     <Select
                       value={ingredient.ingredientId}
@@ -191,23 +257,26 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
                       <SelectTrigger>
                         <SelectValue placeholder="Select ingredient" />
                       </SelectTrigger>
-                      <SelectContent 
+                      <SelectContent
                         onCloseAutoFocus={(e) => e.preventDefault()}
                         position="popper"
                       >
-                        <div className="sticky top-0 p-2 bg-white border-b z-10" 
+                        <div
+                          className="sticky top-0 p-2 bg-white border-b z-10"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <Input
                             placeholder="Search ingredients..."
                             value={searchQueries[index] || ""}
-                            onChange={(e) => handleSearchQueryChange(index, e.target.value)}
+                            onChange={(e) =>
+                              handleSearchQueryChange(index, e.target.value)
+                            }
                             className="h-8"
                             // Completely isolate the input from Select's keyboard controls
                             onClick={(e) => e.stopPropagation()}
                             onKeyDown={(e) => {
                               // Prevent the dropdown from closing on Enter key press
-                              if (e.key === 'Enter') {
+                              if (e.key === "Enter") {
                                 e.preventDefault();
                               }
                               // Stop all keyboard navigation events from bubbling up
@@ -220,15 +289,20 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
                         </div>
                         {availableIngredients
                           .filter((ing) =>
-                            ing.name.toLowerCase().includes(searchQueries[index]?.toLowerCase() || "")
+                            ing.name
+                              .toLowerCase()
+                              .includes(
+                                searchQueries[index]?.toLowerCase() || ""
+                              )
                           )
                           .map((ing) => {
                             const isSelected = ingredients.some(
-                              (i) => i.ingredientId === ing._id && i !== ingredient
+                              (i) =>
+                                i.ingredientId === ing._id && i !== ingredient
                             );
                             return (
-                              <SelectItem 
-                                key={ing._id} 
+                              <SelectItem
+                                key={ing._id}
                                 value={ing._id}
                                 disabled={isSelected}
                                 className={isSelected ? "opacity-50" : ""}
@@ -273,15 +347,22 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
             </div>
           </div>
           <DialogFooter>
-            <Button 
+            <Button
               type="submit"
               disabled={name.trim() === "" || ingredients.length === 0}
             >
-              {editingRecipe ? 'Save Changes' : 'Add Recipe'}
+              {editingRecipe ? "Save Changes" : "Add Recipe"}
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
+
+      {/* Add Ingredient Modal */}
+      <AddIngredientModal
+        open={showIngredientModal}
+        onOpenChange={setShowIngredientModal}
+        onAddIngredient={handleAddNewIngredient}
+      />
     </Dialog>
   );
 };

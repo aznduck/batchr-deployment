@@ -17,6 +17,7 @@ const Recipes = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
+  const [refreshIngredientsKey, setRefreshIngredientsKey] = useState(0);
 
   useEffect(() => {
     const fetchRecipes = async () => {
@@ -39,7 +40,7 @@ const Recipes = () => {
 
     fetchRecipes();
     fetchIngredients();
-  }, []);
+  }, [refreshIngredientsKey]);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
@@ -91,6 +92,10 @@ const Recipes = () => {
       console.error("Error deleting recipe:", error);
       toast.error("Failed to delete recipe");
     }
+  };
+
+  const handleRefreshIngredients = () => {
+    setRefreshIngredientsKey((prev) => prev + 1);
   };
 
   // Filter recipes based on search term
@@ -192,6 +197,7 @@ const Recipes = () => {
         onAddRecipe={editingRecipe ? handleEditRecipe : handleAddRecipe}
         availableIngredients={ingredients}
         editingRecipe={editingRecipe}
+        onRefreshIngredients={handleRefreshIngredients}
       />
     </Layout>
   );

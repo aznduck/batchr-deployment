@@ -1,6 +1,5 @@
-
 import React from "react";
-import { Navbar } from "@/components/Navbar";
+import { SideNav } from "@/components/SideNav";
 import { cn } from "@/lib/utils";
 
 interface LayoutProps {
@@ -10,9 +9,14 @@ interface LayoutProps {
 
 export const Layout: React.FC<LayoutProps> = ({ children, className }) => {
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
-      <main className={cn("container px-4 py-6 pb-16 animate-fade-in", className)}>
+    <div className="min-h-screen bg-background flex">
+      <SideNav />
+      <main
+        className={cn(
+          "flex-1 ml-[240px] px-8 py-6 pb-16 animate-fade-in w-[calc(100%-240px)]",
+          className
+        )}
+      >
         {children}
       </main>
     </div>

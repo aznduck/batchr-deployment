@@ -76,6 +76,20 @@ export const unitCategories: UnitCategoryDefinition[] = [
         conversionFactor: 0.001,
       },
       {
+        symbol: "tsp",
+        name: "Teaspoons",
+        category: "dairy_liquid",
+        baseUnit: "L",
+        conversionFactor: 0.0005,
+      },
+      {
+        symbol: "tbsp",
+        name: "Tablespoons",
+        category: "dairy_liquid",
+        baseUnit: "L",
+        conversionFactor: 0.015,
+      },
+      {
         symbol: "tube",
         name: "Tubes",
         category: "dairy_liquid",

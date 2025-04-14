@@ -11,8 +11,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Ingredient, Supplier } from "@/lib/data";
-import { UnitConverter } from "@/components/UnitConverter";
-import { UnitCategoryType } from "@/lib/units";
+import {
+  unitCategories,
+  UnitCategoryType,
+  UnitDefinition,
+} from "@/lib/units";
 import {
   Select,
   SelectContent,
@@ -59,17 +62,24 @@ export const AddIngredientModal: React.FC<AddIngredientModalProps> = ({
   editingIngredient,
 }) => {
   const [name, setName] = useState("");
-  const [stock, setStock] = useState<number>(0);
-  const [threshold, setThreshold] = useState<number>(0);
+  const [stock, setStock] = useState<string>("");
+  const [threshold, setThreshold] = useState<string>("");
   const [unit, setUnit] = useState("");
-  const [unitCategory, setUnitCategory] =
-    useState<UnitCategoryType>("dairy_liquid");
+  const [unitCategory, setUnitCategory] = useState<UnitCategoryType>("dairy_liquid");
   const [minimumOrderQuantity, setMinimumOrderQuantity] = useState<
     number | undefined
   >();
   const [supplierId, setSupplierId] = useState<string>("unassigned");
   const [upc, setUpc] = useState<string>("");
   const [userSuppliers, setUserSuppliers] = useState<Supplier[]>([]);
+
+  // Get available units for the selected category
+  const getUnitsForCategory = (
+    categoryType: UnitCategoryType
+  ): UnitDefinition[] => {
+    const category = unitCategories.find((c) => c.type === categoryType);
+    return category ? category.units : [];
+  };
 
   useEffect(() => {
     // Fetch user's suppliers from the backend
@@ -88,18 +98,24 @@ export const AddIngredientModal: React.FC<AddIngredientModalProps> = ({
   useEffect(() => {
     if (editingIngredient) {
       setName(editingIngredient.name);
-      setStock(editingIngredient.stock);
-      setThreshold(editingIngredient.threshold);
+      setStock(editingIngredient.stock.toString());
+      setThreshold(editingIngredient.threshold.toString());
+      
+      // Set the unit category first
+      const unitCat = editingIngredient.unitCategory || findCategoryForUnit(editingIngredient.unit) || "dairy_liquid";
+      setUnitCategory(unitCat);
+      
+      // Then set the unit
       setUnit(editingIngredient.unit);
-      setUnitCategory(editingIngredient.unitCategory || "dairy_liquid");
+      
       setMinimumOrderQuantity(editingIngredient.minimumOrderQuantity);
       setSupplierId(editingIngredient.supplierId || "unassigned");
       setUpc(editingIngredient.upc || "");
     } else {
       // Reset form when not editing
       setName("");
-      setStock(0);
-      setThreshold(0);
+      setStock("");
+      setThreshold("");
       setUnit("");
       setUnitCategory("dairy_liquid");
       setMinimumOrderQuantity(undefined);
@@ -108,13 +124,24 @@ export const AddIngredientModal: React.FC<AddIngredientModalProps> = ({
     }
   }, [editingIngredient]);
 
+  // Function to find the category for a unit
+  const findCategoryForUnit = (unitSymbol: string): UnitCategoryType | undefined => {
+    for (const category of unitCategories) {
+      const unitExists = category.units.some(unit => unit.symbol === unitSymbol);
+      if (unitExists) {
+        return category.type;
+      }
+    }
+    return undefined;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     const values = {
       name,
-      stock,
-      threshold,
+      stock: stock === "" ? 0 : Number(stock),
+      threshold: threshold === "" ? 0 : Number(threshold),
       unit,
       unitCategory,
       minimumOrderQuantity,
@@ -131,10 +158,7 @@ export const AddIngredientModal: React.FC<AddIngredientModalProps> = ({
     onOpenChange(false);
   };
 
-  const handleUnitChange = (newUnit: string) => {
-    setUnit(newUnit);
-  };
-
+  // Handle unit category change
   const handleUnitCategoryChange = (category: UnitCategoryType) => {
     setUnitCategory(category);
     setUnit(""); // Reset unit when category changes
@@ -163,14 +187,40 @@ export const AddIngredientModal: React.FC<AddIngredientModalProps> = ({
               />
             </div>
 
-            <div className="space-y-2">
-              <Label>Unit Category</Label>
-              <UnitConverter
-                category={unitCategory}
-                initialUnit={unit}
-                onUnitChange={handleUnitChange}
-                showConverter={false}
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Unit Category</Label>
+                <Select
+                  value={unitCategory}
+                  onValueChange={(value: UnitCategoryType) => handleUnitCategoryChange(value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {unitCategories.map((category) => (
+                      <SelectItem key={category.type} value={category.type}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Unit</Label>
+                <Select value={unit} onValueChange={setUnit}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select unit" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {getUnitsForCategory(unitCategory).map((unit) => (
+                      <SelectItem key={unit.symbol} value={unit.symbol}>
+                        {unit.name} ({unit.symbol})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -180,7 +230,8 @@ export const AddIngredientModal: React.FC<AddIngredientModalProps> = ({
                   id="stock"
                   type="number"
                   value={stock}
-                  onChange={(e) => setStock(Number(e.target.value))}
+                  onChange={(e) => setStock(e.target.value)}
+                  placeholder="0"
                 />
               </div>
               <div className="space-y-2">
@@ -189,7 +240,8 @@ export const AddIngredientModal: React.FC<AddIngredientModalProps> = ({
                   id="threshold"
                   type="number"
                   value={threshold}
-                  onChange={(e) => setThreshold(Number(e.target.value))}
+                  onChange={(e) => setThreshold(e.target.value)}
+                  placeholder="0"
                 />
               </div>
             </div>

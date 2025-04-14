@@ -11,7 +11,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Package, ShoppingCart, Building2 } from "lucide-react";
+import {
+  AlertCircle,
+  Package,
+  ShoppingCart,
+  Building2,
+  Trash2,
+} from "lucide-react";
 import {
   getIngredientById,
   getStockStatus,
@@ -23,6 +29,14 @@ import {
 } from "@/lib/data";
 import { ingredientsApi, suppliersApi } from "@/lib/api";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface CartItem extends OrderItem {
   ingredient: Ingredient;
@@ -43,6 +57,10 @@ export default function Ordering() {
     [key: string]: string;
   }>({});
   const [showAddSupplier, setShowAddSupplier] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [supplierToDelete, setSupplierToDelete] = useState<Supplier | null>(
+    null
+  );
 
   useEffect(() => {
     // Fetch user's ingredients from the backend
@@ -243,7 +261,7 @@ export default function Ordering() {
       const newSupplierData = await suppliersApi.create(newSupplier);
       setUserSuppliers([...userSuppliers, newSupplierData]);
       toast.success("Supplier added successfully!");
-      
+
       // Reset form and close dialog
       setNewSupplier({
         name: "",
@@ -259,27 +277,54 @@ export default function Ordering() {
   };
 
   const togglePreferredSupplier = async (supplierId: string) => {
+    const supplier = userSuppliers.find((s) => s._id === supplierId);
+    if (!supplier) return;
+
     try {
-      const supplier = userSuppliers.find((s) => s._id === supplierId);
-      if (!supplier) return;
-      
-      const updatedSupplier = await suppliersApi.update(supplierId, {
+      await suppliersApi.update(supplierId, {
         preferred: !supplier.preferred,
       });
 
-      // Update the suppliers list with the updated supplier
+      // Update local state
       setUserSuppliers(
-        userSuppliers.map((s) => (s._id === supplierId ? updatedSupplier : s))
+        userSuppliers.map((s) =>
+          s._id === supplierId ? { ...s, preferred: !s.preferred } : s
+        )
       );
-
       toast.success(
-        `${updatedSupplier.name} is ${
-          updatedSupplier.preferred ? "now" : "no longer"
+        `${supplier.name} is ${
+          !supplier.preferred ? "now" : "no longer"
         } a preferred supplier`
       );
     } catch (error) {
       console.error("Failed to update supplier:", error);
       toast.error("Failed to update supplier preference");
+    }
+  };
+
+  const handleDeleteClick = (supplier: Supplier) => {
+    setSupplierToDelete(supplier);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!supplierToDelete) return;
+
+    try {
+      await suppliersApi.delete(supplierToDelete._id);
+
+      // Update local state
+      setUserSuppliers(
+        userSuppliers.filter((s) => s._id !== supplierToDelete._id)
+      );
+
+      toast.success(`${supplierToDelete.name} has been deleted`);
+    } catch (error) {
+      console.error("Failed to delete supplier:", error);
+      toast.error("Failed to delete supplier");
+    } finally {
+      setDeleteDialogOpen(false);
+      setSupplierToDelete(null);
     }
   };
 
@@ -490,7 +535,10 @@ export default function Ordering() {
                   <Input
                     value={newSupplier.supplierLink}
                     onChange={(e) =>
-                      setNewSupplier({ ...newSupplier, supplierLink: e.target.value })
+                      setNewSupplier({
+                        ...newSupplier,
+                        supplierLink: e.target.value,
+                      })
                     }
                     placeholder="Enter supplier website"
                   />
@@ -542,6 +590,14 @@ export default function Ordering() {
                             ? "Preferred"
                             : "Set as Preferred"}
                         </Button>
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          onClick={() => handleDeleteClick(supplier)}
+                          title="Delete supplier"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
                   ))
@@ -551,6 +607,30 @@ export default function Ordering() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Supplier</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete {supplierToDelete?.name}? This
+              action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmDelete}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }

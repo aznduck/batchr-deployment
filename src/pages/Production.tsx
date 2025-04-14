@@ -22,6 +22,7 @@ import {
   FileText,
   PlusCircle,
   Save,
+  Search,
 } from "lucide-react";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
@@ -40,7 +41,8 @@ import { ProductionEntry, recipesApi, productionApi } from "@/lib/api";
 const Production = () => {
   const [date, setDate] = useState<Date>(new Date());
   const [selectedRecipe, setSelectedRecipe] = useState<string>("");
-  const [quantity, setQuantity] = useState<string>("50");
+  const [recipeSearchQuery, setRecipeSearchQuery] = useState<string>("");
+  const [quantity, setQuantity] = useState<string>("1");
   const [notes, setNotes] = useState<string>("");
   const [supervisor, setSupervisor] = useState<string>("");
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -117,7 +119,7 @@ const Production = () => {
 
       // Reset form
       setSelectedRecipe("");
-      setQuantity("50");
+      setQuantity("1");
       setNotes("");
       setSupervisor("");
 
@@ -201,12 +203,48 @@ const Production = () => {
                   <SelectTrigger>
                     <SelectValue placeholder="Select a recipe" />
                   </SelectTrigger>
-                  <SelectContent>
-                    {recipes.map((recipe) => (
-                      <SelectItem key={recipe._id} value={recipe._id}>
-                        {recipe.name}
-                      </SelectItem>
-                    ))}
+                  <SelectContent
+                    onCloseAutoFocus={(e) => e.preventDefault()}
+                    position="popper"
+                  >
+                    <div
+                      className="sticky top-0 p-2 bg-white border-b z-10"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="relative">
+                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Search recipes..."
+                          value={recipeSearchQuery}
+                          onChange={(e) => setRecipeSearchQuery(e.target.value)}
+                          className="h-9 pl-8"
+                          // Completely isolate the input from Select's keyboard controls
+                          onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => {
+                            // Prevent the dropdown from closing on Enter key press
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                            }
+                            // Stop all keyboard navigation events from bubbling up
+                            e.stopPropagation();
+                          }}
+                          // Prevent the dropdown from controlling focus
+                          onFocus={(e) => e.stopPropagation()}
+                          onBlur={(e) => e.stopPropagation()}
+                        />
+                      </div>
+                    </div>
+                    {recipes
+                      .filter((recipe) =>
+                        recipe.name
+                          .toLowerCase()
+                          .includes(recipeSearchQuery.toLowerCase())
+                      )
+                      .map((recipe) => (
+                        <SelectItem key={recipe._id} value={recipe._id}>
+                          {recipe.name}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>

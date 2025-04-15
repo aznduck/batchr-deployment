@@ -315,13 +315,16 @@ export const machinesApi = {
   getMaintenance(id: string) {
     return apiRequest(`/machines/${id}/maintenance`);
   },
-  addMaintenance(id: string, data: {
-    startTime: Date;
-    endTime: Date;
-    description: string;
-    performed?: boolean;
-    technician?: string;
-  }) {
+  addMaintenance(
+    id: string,
+    data: {
+      startTime: Date;
+      endTime: Date;
+      description: string;
+      performed?: boolean;
+      technician?: string;
+    }
+  ) {
     return apiRequest(`/machines/${id}/maintenance`, "POST", data);
   },
   assignEmployee(id: string, employeeId: string | null) {
@@ -371,22 +374,30 @@ export const employeesApi = {
   },
   // Specialized endpoints
   getAvailability(id: string, startDate: string, endDate: string) {
-    return apiRequest(`/employees/${id}/availability?startDate=${startDate}&endDate=${endDate}`);
+    return apiRequest(
+      `/employees/${id}/availability?startDate=${startDate}&endDate=${endDate}`
+    );
   },
-  updateAvailability(id: string, data: {
-    date: Date;
-    timeSlots: {
-      startTime: Date;
-      endTime: Date;
-      status: "available" | "unavailable" | "tentative";
-    }[];
-  }) {
+  updateAvailability(
+    id: string,
+    data: {
+      date: Date;
+      timeSlots: {
+        startTime: Date;
+        endTime: Date;
+        status: "available" | "unavailable" | "tentative";
+      }[];
+    }
+  ) {
     return apiRequest(`/employees/${id}/availability`, "PUT", data);
   },
-  addCertification(id: string, data: {
-    machineId: string;
-    certificationDate: Date;
-  }) {
+  addCertification(
+    id: string,
+    data: {
+      machineId: string;
+      certificationDate: Date;
+    }
+  ) {
     return apiRequest(`/employees/${id}/certifications`, "POST", data);
   },
   removeCertification(id: string, machineId: string) {

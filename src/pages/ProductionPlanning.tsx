@@ -6,25 +6,13 @@ import { CalendarDays, Plus, RefreshCw, Download, Upload } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
+import { ScheduleView } from "@/components/Planning/ScheduleView";
+import ScheduleBlock from "@/components/Planning/ScheduleBlock";
 
 // Import types from our API
 import { ProductionPlan } from "@/lib/production";
 
 // We'll create placeholders for components to be implemented in later steps
-const ScheduleCalendarView = () => (
-  <Card className="flex-1 border-2 border-dashed border-muted rounded-lg p-8 flex items-center justify-center bg-muted/20">
-    <div className="text-center space-y-3">
-      <CalendarDays className="mx-auto h-12 w-12 text-muted-foreground" />
-      <h3 className="font-medium text-lg">Schedule Calendar View</h3>
-      <p className="text-muted-foreground text-sm">
-        Time-slot grid with 15-minute increments
-        <br />
-        Coming in step 3.2
-      </p>
-    </div>
-  </Card>
-);
-
 const ResourceManagementPanel = () => (
   <Card className="w-72 border-2 border-dashed border-muted rounded-lg p-8 flex flex-col items-center justify-center bg-muted/20">
     <div className="text-center space-y-3">
@@ -264,7 +252,9 @@ const ProductionPlanning = () => {
           <TabsContent value="calendar" className="space-y-4">
             <div className="flex gap-6 h-[calc(100vh-220px)]">
               <ResourceManagementPanel />
-              <ScheduleCalendarView />
+              <div className="flex-1">
+                <ScheduleView />
+              </div>
             </div>
           </TabsContent>
 

@@ -17,6 +17,13 @@ import { toast } from "sonner";
 import { Ingredient } from "@/lib/data";
 import { ingredientsApi } from "@/lib/api";
 
+// Custom loading spinner component with reliable animation
+const LoadingSpinner = () => (
+  <div className="flex justify-center items-center h-40">
+    <div className="spinner-border h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full" />
+  </div>
+);
+
 const Inventory = () => {
   const initialIngredients: Ingredient[] = []; // define an empty array or populate with initial data
   const [ingredients, setIngredients] =
@@ -27,14 +34,22 @@ const Inventory = () => {
   const [editingIngredient, setEditingIngredient] = useState<Ingredient | null>(
     null
   );
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchIngredients = async () => {
+      setIsLoading(true);
+      setError(null);
       try {
         const data = await ingredientsApi.getAll();
         setIngredients(data);
       } catch (err) {
         console.error("Failed to fetch ingredients", err);
+        setError("Failed to load ingredients. Please try again.");
+        toast.error("Failed to load ingredients");
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -161,6 +176,17 @@ const Inventory = () => {
 
   return (
     <Layout>
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+          .spinner-border {
+            animation: spin 1s linear infinite;
+          }
+        `
+      }} />
       <div className="space-y-6">
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-bold tracking-tight">
@@ -223,41 +249,72 @@ const Inventory = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
-          {filteredIngredients.length === 0 ? (
-            <div className="col-span-full flex flex-col items-center justify-center py-12 text-center">
-              <div className="bg-muted/50 rounded-full p-3 mb-3">
-                <Search className="h-6 w-6 text-muted-foreground" />
+        {isLoading ? (
+          <LoadingSpinner />
+        ) : error ? (
+          <div className="text-center text-red-500 py-4">
+            {error}
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-2 mx-auto block"
+              onClick={() => {
+                const fetchIngredients = async () => {
+                  setIsLoading(true);
+                  setError(null);
+                  try {
+                    const data = await ingredientsApi.getAll();
+                    setIngredients(data);
+                  } catch (err) {
+                    console.error("Failed to fetch ingredients", err);
+                    setError("Failed to load ingredients. Please try again.");
+                  } finally {
+                    setIsLoading(false);
+                  }
+                };
+                fetchIngredients();
+              }}
+            >
+              Retry
+            </Button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+            {filteredIngredients.length === 0 ? (
+              <div className="col-span-full flex flex-col items-center justify-center py-12 text-center">
+                <div className="bg-muted/50 rounded-full p-3 mb-3">
+                  <Search className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-medium">No ingredients found</h3>
+                <p className="text-muted-foreground mt-1">
+                  {searchTerm
+                    ? `No results for "${searchTerm}"`
+                    : "Try adding some ingredients to get started."}
+                </p>
+                <Button
+                  variant="outline"
+                  className="mt-4"
+                  onClick={() => {
+                    setEditingIngredient(null);
+                    setAddModalOpen(true);
+                  }}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Ingredient
+                </Button>
               </div>
-              <h3 className="text-lg font-medium">No ingredients found</h3>
-              <p className="text-muted-foreground mt-1">
-                {searchTerm
-                  ? `No results for "${searchTerm}"`
-                  : "Try adding some ingredients to get started."}
-              </p>
-              <Button
-                variant="outline"
-                className="mt-4"
-                onClick={() => {
-                  setEditingIngredient(null);
-                  setAddModalOpen(true);
-                }}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Ingredient
-              </Button>
-            </div>
-          ) : (
-            filteredIngredients.map((ingredient) => (
-              <IngredientCard
-                key={ingredient._id}
-                ingredient={ingredient}
-                onEdit={() => handleEditIngredient(ingredient)}
-                onDelete={() => handleDeleteIngredient(ingredient)}
-              />
-            ))
-          )}
-        </div>
+            ) : (
+              filteredIngredients.map((ingredient) => (
+                <IngredientCard
+                  key={ingredient._id}
+                  ingredient={ingredient}
+                  onEdit={() => handleEditIngredient(ingredient)}
+                  onDelete={() => handleDeleteIngredient(ingredient)}
+                />
+              ))
+            )}
+          </div>
+        )}
       </div>
 
       <AddIngredientModal

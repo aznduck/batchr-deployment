@@ -10,6 +10,13 @@ import { Recipe, Ingredient } from "@/lib/data";
 import { AddRecipeModal } from "@/components/Recipe/AddRecipeModal";
 import { recipesApi, ingredientsApi } from "@/lib/api";
 
+// Custom loading spinner component with reliable animation
+const LoadingSpinner = () => (
+  <div className="flex justify-center items-center h-40">
+    <div className="spinner-border h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full" />
+  </div>
+);
+
 const Recipes = () => {
   const initialRecipes: Recipe[] = [];
   const [recipes, setRecipes] = useState<Recipe[]>(initialRecipes);
@@ -18,23 +25,49 @@ const Recipes = () => {
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
   const [refreshIngredientsKey, setRefreshIngredientsKey] = useState(0);
+  const [isLoading, setIsLoading] = useState({
+    recipes: false,
+    ingredients: false,
+  });
+  const [error, setError] = useState({
+    recipes: null,
+    ingredients: null,
+  });
 
   useEffect(() => {
     const fetchRecipes = async () => {
+      setIsLoading((prev) => ({ ...prev, recipes: true }));
+      setError((prev) => ({ ...prev, recipes: null }));
       try {
         const data = await recipesApi.getAll();
         setRecipes(data);
       } catch (err) {
         console.error("Failed to fetch recipes", err);
+        setError((prev) => ({
+          ...prev,
+          recipes: "Failed to load recipes. Please try again.",
+        }));
+        toast.error("Failed to fetch recipes");
+      } finally {
+        setIsLoading((prev) => ({ ...prev, recipes: false }));
       }
     };
 
     const fetchIngredients = async () => {
+      setIsLoading((prev) => ({ ...prev, ingredients: true }));
+      setError((prev) => ({ ...prev, ingredients: null }));
       try {
         const data = await ingredientsApi.getAll();
         setIngredients(data);
       } catch (err) {
         console.error("Failed to fetch ingredients", err);
+        setError((prev) => ({
+          ...prev,
+          ingredients: "Failed to load ingredients. Please try again.",
+        }));
+        toast.error("Failed to fetch ingredients");
+      } finally {
+        setIsLoading((prev) => ({ ...prev, ingredients: false }));
       }
     };
 
@@ -107,6 +140,19 @@ const Recipes = () => {
 
   return (
     <Layout>
+      {/* Add the spinner CSS */}
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+          .spinner-border {
+            animation: spin 1s linear infinite;
+          }
+        `
+      }} />
+      
       <div className="space-y-6">
         <div className="flex justify-between items-start flex-wrap gap-4">
           <div className="space-y-1">
@@ -151,38 +197,72 @@ const Recipes = () => {
             </Badge>
           </div>
 
-          {filteredRecipes.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="bg-muted/50 rounded-full p-3 mb-3">
-                <Search className="h-6 w-6 text-muted-foreground" />
-              </div>
-              <h3 className="text-lg font-medium">No recipes found</h3>
-              <p className="text-muted-foreground mt-1">
-                {searchTerm
-                  ? `No results for "${searchTerm}"`
-                  : "Try adding a recipe to get started."}
-              </p>
+          {isLoading.recipes ? (
+            <LoadingSpinner />
+          ) : error.recipes ? (
+            <div className="text-center text-red-500 py-4">
+              {error.recipes}
               <Button
                 variant="outline"
-                className="mt-4"
-                onClick={() => setAddModalOpen(true)}
+                size="sm"
+                className="mt-2 mx-auto block"
+                onClick={() => {
+                  const fetchRecipes = async () => {
+                    setIsLoading((prev) => ({ ...prev, recipes: true }));
+                    setError((prev) => ({ ...prev, recipes: null }));
+                    try {
+                      const data = await recipesApi.getAll();
+                      setRecipes(data);
+                    } catch (err) {
+                      console.error("Failed to fetch recipes", err);
+                      setError((prev) => ({
+                        ...prev,
+                        recipes: "Failed to load recipes. Please try again.",
+                      }));
+                    } finally {
+                      setIsLoading((prev) => ({ ...prev, recipes: false }));
+                    }
+                  };
+                  fetchRecipes();
+                }}
               >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Recipe
+                Retry
               </Button>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {filteredRecipes.map((recipe) => (
-                <RecipeCard
-                  key={recipe._id}
-                  recipe={recipe}
-                  ingredients={ingredients}
-                  onEdit={setEditingRecipe}
-                  onDelete={handleDeleteRecipe}
-                  className="h-[400px]"
-                />
-              ))}
+              {filteredRecipes.length === 0 ? (
+                <div className="col-span-full flex flex-col items-center justify-center py-12 text-center">
+                  <div className="bg-muted/50 rounded-full p-3 mb-3">
+                    <Search className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-lg font-medium">No recipes found</h3>
+                  <p className="text-muted-foreground mt-1">
+                    {searchTerm
+                      ? `No results for "${searchTerm}"`
+                      : "Try adding a recipe to get started."}
+                  </p>
+                  <Button
+                    variant="outline"
+                    className="mt-4"
+                    onClick={() => setAddModalOpen(true)}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Recipe
+                  </Button>
+                </div>
+              ) : (
+                filteredRecipes.map((recipe) => (
+                  <RecipeCard
+                    key={recipe._id}
+                    recipe={recipe}
+                    ingredients={ingredients}
+                    onEdit={() => setEditingRecipe(recipe)}
+                    onDelete={() => handleDeleteRecipe(recipe)}
+                    className="h-[400px]"
+                  />
+                ))
+              )}
             </div>
           )}
         </div>

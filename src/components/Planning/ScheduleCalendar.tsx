@@ -132,7 +132,7 @@ export const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({ onTimeSlotCl
           {/* Time Indicators */}
           <div className="w-16 min-w-[4rem] flex flex-col border-r">
             {timeSlots.map((slot, index) => (
-              <React.Fragment key={index}>
+              <div key={index}>
                 {slot.minute === 0 && (
                   <div className="h-[80px] border-t flex items-start justify-center px-2 text-xs text-muted-foreground relative -top-2">
                     <span>{slot.hour % 12 === 0 ? 12 : slot.hour % 12}{slot.hour >= 12 ? 'PM' : 'AM'}</span>
@@ -141,7 +141,7 @@ export const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({ onTimeSlotCl
                 {slot.minute !== 0 && (
                   <div className="h-[20px]"></div>
                 )}
-              </React.Fragment>
+              </div>
             ))}
           </div>
 

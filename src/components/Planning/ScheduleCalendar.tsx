@@ -1,14 +1,22 @@
 import React, { useState } from "react";
-import { addDays, format, startOfWeek, isSameDay, subDays, addWeeks, subWeeks } from "date-fns";
+import {
+  addDays,
+  format,
+  startOfWeek,
+  isSameDay,
+  subDays,
+  addWeeks,
+  subWeeks,
+} from "date-fns";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  Clock, 
-  CalendarDays, 
-  Calendar as CalendarIcon
+import {
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  CalendarDays,
+  Calendar as CalendarIcon,
 } from "lucide-react";
 
 // Constants for time display
@@ -26,8 +34,11 @@ const generateTimeSlots = () => {
       slots.push({
         hour,
         minute,
-        label: `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`,
-        isBusinessHour: hour >= BUSINESS_HOURS_START && hour < BUSINESS_HOURS_END
+        label: `${hour.toString().padStart(2, "0")}:${minute
+          .toString()
+          .padStart(2, "0")}`,
+        isBusinessHour:
+          hour >= BUSINESS_HOURS_START && hour < BUSINESS_HOURS_END,
       });
     }
   }
@@ -40,26 +51,30 @@ interface ScheduleCalendarProps {
   onTimeSlotClick?: (day: Date, hour: number, minute: number) => void;
 }
 
-export const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({ onTimeSlotClick }) => {
+export const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({
+  onTimeSlotClick,
+}) => {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [weekStart, setWeekStart] = useState(startOfWeek(currentDate, { weekStartsOn: 1 })); // Start on Monday
+  const [weekStart, setWeekStart] = useState(
+    startOfWeek(currentDate, { weekStartsOn: 1 })
+  ); // Start on Monday
 
   // Generate array of days for the current week view
   const weekDays = [...Array(7)].map((_, i) => addDays(weekStart, i));
-  
+
   // Navigation functions
   const goToPreviousWeek = () => {
     const newWeekStart = subWeeks(weekStart, 1);
     setWeekStart(newWeekStart);
     setCurrentDate(addDays(newWeekStart, 2)); // Move to mid-week
   };
-  
+
   const goToNextWeek = () => {
     const newWeekStart = addWeeks(weekStart, 1);
     setWeekStart(newWeekStart);
     setCurrentDate(addDays(newWeekStart, 2)); // Move to mid-week
   };
-  
+
   const goToToday = () => {
     const today = new Date();
     setCurrentDate(today);
@@ -86,7 +101,8 @@ export const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({ onTimeSlotCl
         <div className="flex items-center space-x-2">
           <CalendarIcon className="h-5 w-5 text-muted-foreground" />
           <h3 className="text-lg font-medium">
-            {format(weekStart, "MMMM d")} - {format(addDays(weekStart, 6), "MMMM d, yyyy")}
+            {format(weekStart, "MMMM d")} -{" "}
+            {format(addDays(weekStart, 6), "MMMM d, yyyy")}
           </h3>
         </div>
         <div className="flex items-center space-x-2">
@@ -115,11 +131,15 @@ export const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({ onTimeSlotCl
               isSameDay(day, new Date()) && "bg-primary/5"
             )}
           >
-            <div className="text-xs text-muted-foreground">{format(day, "EEE")}</div>
-            <div className={cn(
-              "text-sm",
-              isSameDay(day, new Date()) && "text-primary font-semibold"
-            )}>
+            <div className="text-xs text-muted-foreground">
+              {format(day, "EEE")}
+            </div>
+            <div
+              className={cn(
+                "text-sm",
+                isSameDay(day, new Date()) && "text-primary font-semibold"
+              )}
+            >
               {format(day, "d")}
             </div>
           </div>
@@ -134,12 +154,12 @@ export const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({ onTimeSlotCl
             {timeSlots.map((slot, index) => (
               <div key={index}>
                 {slot.minute === 0 && (
-                  <div className="h-[80px] border-t flex items-start justify-center px-2 text-xs text-muted-foreground relative -top-2">
-                    <span>{slot.hour % 12 === 0 ? 12 : slot.hour % 12}{slot.hour >= 12 ? 'PM' : 'AM'}</span>
+                  <div className="h-[80px] border-t flex items-start justify-center px-2 text-xs text-muted-foreground sticky">
+                    <span className="relative -top-2.5">
+                      {slot.hour % 12 === 0 ? 12 : slot.hour % 12}
+                      {slot.hour >= 12 ? "PM" : "AM"}
+                    </span>
                   </div>
-                )}
-                {slot.minute !== 0 && (
-                  <div className="h-[20px]"></div>
                 )}
               </div>
             ))}
@@ -155,14 +175,20 @@ export const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({ onTimeSlotCl
               )}
             >
               {/* Business Hours Highlight */}
-              <div 
+              <div
                 className="absolute bg-blue-50/50 w-full pointer-events-none"
                 style={{
-                  top: `${(BUSINESS_HOURS_START - HOURS_START) * 4 * TIME_SLOT_HEIGHT}px`,
-                  height: `${(BUSINESS_HOURS_END - BUSINESS_HOURS_START) * 4 * TIME_SLOT_HEIGHT}px`
+                  top: `${
+                    (BUSINESS_HOURS_START - HOURS_START) * 4 * TIME_SLOT_HEIGHT
+                  }px`,
+                  height: `${
+                    (BUSINESS_HOURS_END - BUSINESS_HOURS_START) *
+                    4 *
+                    TIME_SLOT_HEIGHT
+                  }px`,
                 }}
               ></div>
-              
+
               {/* Time Slots */}
               {timeSlots.map((slot, index) => (
                 <div
@@ -173,33 +199,47 @@ export const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({ onTimeSlotCl
                     slot.minute !== 0 && "border-muted/30",
                     "hover:bg-muted/50 transition-colors cursor-pointer"
                   )}
-                  onClick={() => handleTimeSlotClick(day, slot.hour, slot.minute)}
+                  onClick={() =>
+                    handleTimeSlotClick(day, slot.hour, slot.minute)
+                  }
                 ></div>
               ))}
             </div>
           ))}
-          
+
           {/* Current time indicator */}
           {(() => {
             const now = new Date();
             const hoursDiff = now.getHours() - HOURS_START;
             const minutesDiff = now.getMinutes();
             // Fix the calculation to align exactly with time slots
-            const topPosition = hoursDiff * 4 * TIME_SLOT_HEIGHT + (minutesDiff / 15) * TIME_SLOT_HEIGHT;
-            
+            const topPosition =
+              hoursDiff * 4 * TIME_SLOT_HEIGHT +
+              (minutesDiff / 15) * TIME_SLOT_HEIGHT;
+
             // Only show if current time is within view
-            if (hoursDiff >= 0 && hoursDiff < (HOURS_END - HOURS_START) && weekDays.some(day => isSameDay(day, now))) {
-              const currentDayIndex = weekDays.findIndex(day => isSameDay(day, now));
+            if (
+              hoursDiff >= 0 &&
+              hoursDiff < HOURS_END - HOURS_START &&
+              weekDays.some((day) => isSameDay(day, now))
+            ) {
+              const currentDayIndex = weekDays.findIndex((day) =>
+                isSameDay(day, now)
+              );
               if (currentDayIndex !== -1) {
-                const leftPosition = `calc(4rem + ${currentDayIndex * (100 / 7)}%)`;
-                
+                const leftPosition = `calc(4rem + ${
+                  currentDayIndex * (100 / 7)
+                }%)`;
+
                 return (
-                  <div 
+                  <div
                     className="absolute left-0 right-0 flex items-center pointer-events-none z-10"
                     style={{ top: `${topPosition}px` }}
                   >
                     <div className="w-16 min-w-[4rem] pr-1 text-right">
-                      <div className="text-xs font-medium text-primary">{format(now, 'h:mm a')}</div>
+                      <div className="text-xs font-medium text-primary">
+                        {format(now, "h:mm a")}
+                      </div>
                     </div>
                     <div className="flex-1 h-0.5 bg-primary/70"></div>
                   </div>

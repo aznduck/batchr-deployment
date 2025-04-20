@@ -214,7 +214,7 @@ export const productionBlocksApi = {
   create(data: {
     startTime: Date;
     endTime: Date;
-    blockType: "prep" | "production" | "cleaning";
+    blockType: "prep" | "production" | "cleaning" | "maintenance";
     machineId: string;
     employeeId: string;
     recipeId?: string;
@@ -345,7 +345,7 @@ export const employeesApi = {
     role: string;
     email: string;
     phone?: string;
-    schedule?: {
+    shifts?: {
       day: string;
       startTime: string;
       endTime: string;
@@ -360,7 +360,7 @@ export const employeesApi = {
       role?: string;
       email?: string;
       phone?: string;
-      schedule?: {
+      shifts?: {
         day: string;
         startTime: string;
         endTime: string;

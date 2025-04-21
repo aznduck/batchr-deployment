@@ -1,10 +1,5 @@
-import React, {
-  useState,
-  useEffect,
-  forwardRef,
-  useImperativeHandle,
-} from "react";
-import { format } from "date-fns";
+import React, { useState, useEffect } from "react";
+import { format, getDay } from "date-fns";
 import { Loader2 } from "lucide-react";
 import {
   Dialog,
@@ -30,396 +25,460 @@ import { v4 as uuidv4 } from "uuid";
 import { ProductionBlock } from "@/lib/productionBlock";
 import { Machine } from "@/lib/machine";
 import { Employee } from "@/lib/employee";
-import { productionBlocksApi, machinesApi, employeesApi } from "@/lib/api";
-
-// Define the ref methods to expose
-export interface ScheduleBuilderRef {
-  openAddDialog: (initialBlock?: Partial<ProductionBlock>) => void;
-}
+import { Recipe } from "@/lib/data";
+import {
+  productionBlocksApi,
+  machinesApi,
+  employeesApi,
+  recipesApi,
+} from "@/lib/api";
 
 interface ScheduleBuilderProps {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
   onBlockAdded?: (block: ProductionBlock) => void;
   onBlockUpdated?: (block: ProductionBlock) => void;
   onBlockDeleted?: (blockId: string) => void;
+  planId?: string;
 }
 
-const ScheduleBuilder = forwardRef<ScheduleBuilderRef, ScheduleBuilderProps>(
-  ({ onBlockAdded, onBlockUpdated, onBlockDeleted }, ref) => {
-    const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-    const [selectedBlock, setSelectedBlock] = useState<ProductionBlock | null>(
-      null
-    );
-    const [machines, setMachines] = useState<Machine[]>([]);
-    const [employees, setEmployees] = useState<Employee[]>([]);
-    const [isLoading, setIsLoading] = useState({
-      blocks: false,
-      machines: false,
-      employees: false,
-    });
+const ScheduleBuilder: React.FC<ScheduleBuilderProps> = ({
+  isOpen,
+  onOpenChange,
+  onBlockAdded,
+  onBlockUpdated,
+  onBlockDeleted,
+  planId,
+}) => {
+  const [selectedBlock, setSelectedBlock] = useState<ProductionBlock>({
+    _id: "",
+    startTime: new Date(new Date().setHours(9, 0, 0, 0)), // Default 9 AM
+    endTime: new Date(new Date().setHours(10, 0, 0, 0)), // Default 10 AM
+    blockType: "production",
+    day: "Monday",
+    status: "scheduled",
+    notes: "",
+  });
+  const [machines, setMachines] = useState<Machine[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [isLoading, setIsLoading] = useState({
+    blocks: false,
+    machines: false,
+    employees: false,
+    recipes: false,
+  });
 
-    // Expose methods to the parent
-    useImperativeHandle(ref, () => ({
-      openAddDialog: (initialBlock?: Partial<ProductionBlock>) => {
-        if (initialBlock) {
-          // Create a new block with the provided properties
-          const newBlock: ProductionBlock = {
-            _id: initialBlock._id || uuidv4(),
-            startTime:
-              initialBlock.startTime ||
-              new Date(new Date().setHours(9, 0, 0, 0)),
-            endTime:
-              initialBlock.endTime ||
-              new Date(new Date().setHours(10, 0, 0, 0)),
-            blockType: initialBlock.blockType || "production",
-            machine: initialBlock.machine,
-            assignedEmployee: initialBlock.assignedEmployee,
-            status: initialBlock.status || "scheduled",
-            notes: initialBlock.notes || "",
-          };
-          setSelectedBlock(newBlock);
-        } else {
-          // Default block
-          const newBlock: ProductionBlock = {
-            _id: uuidv4(),
-            startTime: new Date(new Date().setHours(9, 0, 0, 0)),
-            endTime: new Date(new Date().setHours(10, 0, 0, 0)),
-            blockType: "production",
-            status: "scheduled",
-            notes: "",
-          };
-          setSelectedBlock(newBlock);
-        }
-        setIsAddDialogOpen(true);
-      },
-    }));
+  // Reset the selected block when dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedBlock({
+        _id: "",
+        startTime: new Date(new Date().setHours(9, 0, 0, 0)), // Default 9 AM
+        endTime: new Date(new Date().setHours(10, 0, 0, 0)), // Default 10 AM
+        blockType: "production",
+        day: "Monday",
+        status: "scheduled",
+        notes: "",
+      });
+    }
+  }, [isOpen]);
 
-    // Fetch machines and employees when component mounts
-    useEffect(() => {
-      const fetchResources = async () => {
-        setIsLoading((prev) => ({ ...prev, machines: true, employees: true }));
-        try {
-          // Fetch machines
-          const fetchedMachines = await machinesApi.getAll();
-          setMachines(fetchedMachines as Machine[]);
-
-          // Fetch employees
-          const fetchedEmployees = await employeesApi.getAll();
-          setEmployees(fetchedEmployees as Employee[]);
-        } catch (err) {
-          console.error("Error fetching resources:", err);
-          toast.error("Failed to load machines or employees");
-        } finally {
-          setIsLoading((prev) => ({
-            ...prev,
-            machines: false,
-            employees: false,
-          }));
-        }
-      };
-
-      fetchResources();
-    }, []);
-
-    const handleSaveBlock = async (block: ProductionBlock) => {
-      setIsLoading((prev) => ({ ...prev, blocks: true }));
-
+  // Fetch machines and employees when component mounts
+  useEffect(() => {
+    const fetchResources = async () => {
+      setIsLoading((prev) => ({
+        ...prev,
+        machines: true,
+        employees: true,
+        recipes: true,
+      }));
       try {
-        // Determine if this is a new block (no ID or empty ID)
-        const isNewBlock = !block._id || block._id === "";
+        // Fetch machines
+        const fetchedMachines = await machinesApi.getAll();
+        setMachines(fetchedMachines as Machine[]);
 
-        // Convert time strings to Date objects for the API
-        const startTime = new Date(block.startTime);
-        const endTime = new Date(block.endTime);
+        // Fetch employees
+        const fetchedEmployees = await employeesApi.getAll();
+        setEmployees(fetchedEmployees as Employee[]);
 
-        // Create the data for the API
-        const blockData = {
-          startTime,
-          endTime,
-          blockType: block.blockType,
-          machineId: block.machine?._id || "",
-          employeeId: block.assignedEmployee?._id || "",
-          planId: "temp-plan-id", // This would be from context or props in a real app
-          notes: block.notes || "",
-        };
-
-        let updatedBlock: ProductionBlock;
-
-        if (isNewBlock) {
-          // Call API to create the block
-          const response = await productionBlocksApi.create(blockData);
-
-          // Update the block with the response data
-          updatedBlock = {
-            ...block,
-            _id: response._id || block._id,
-          };
-
-          // Call callback if provided
-          if (onBlockAdded) {
-            onBlockAdded(updatedBlock);
-          }
-
-          toast.success("Production block added successfully");
-        } else {
-          // Call API to update the block
-          await productionBlocksApi.update(block._id, blockData);
-
-          updatedBlock = block;
-
-          // Call callback if provided
-          if (onBlockUpdated) {
-            onBlockUpdated(updatedBlock);
-          }
-
-          toast.success("Production block updated successfully");
-        }
-
-        // Close dialogs
-        setIsAddDialogOpen(false);
-        setSelectedBlock(null);
+        // Fetch recipes
+        const fetchedRecipes = await recipesApi.getAll();
+        setRecipes(fetchedRecipes as Recipe[]);
       } catch (err) {
-        console.error("Error saving production block:", err);
-        toast.error("Failed to save production block");
+        console.error("Error fetching resources:", err);
+        toast.error("Failed to load resources");
       } finally {
-        setIsLoading((prev) => ({ ...prev, blocks: false }));
+        setIsLoading((prev) => ({
+          ...prev,
+          machines: false,
+          employees: false,
+          recipes: false,
+        }));
       }
     };
 
-    return (
-      <div id="schedule-builder">
-        {/* Add Block Dialog */}
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Add Production Block</DialogTitle>
-              <DialogDescription>
-                Create a new production block on the calendar
-              </DialogDescription>
-            </DialogHeader>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (selectedBlock) {
-                  handleSaveBlock(selectedBlock);
+    if (isOpen) {
+      fetchResources();
+    }
+  }, [isOpen]);
+
+  const handleSaveBlock = async () => {
+    setIsLoading((prev) => ({ ...prev, blocks: true }));
+
+    try {
+      // Prepare the block data for API
+      const blockData = {
+        startTime: new Date(selectedBlock.startTime),
+        endTime: new Date(selectedBlock.endTime),
+        blockType: selectedBlock.blockType,
+        machineId: selectedBlock.machine?._id || "",
+        employeeId: selectedBlock.assignedEmployee?._id || "",
+        // Ensure day is always set to a valid value
+        day: selectedBlock.day || "Monday", // Default to Monday if somehow not set
+        notes: selectedBlock.notes || "",
+      };
+
+      console.log("Sending block data with day:", blockData.day);
+
+      // Only add planId if one is provided in props and it's a valid ID
+      if (planId && planId.match(/^[0-9a-fA-F]{24}$/)) {
+        Object.assign(blockData, { planId });
+      }
+
+      // For production blocks, add recipe and quantity
+      if (selectedBlock.blockType === "production") {
+        if (selectedBlock.recipe?._id) {
+          Object.assign(blockData, { recipeId: selectedBlock.recipe._id });
+        }
+        if (selectedBlock.plannedQuantity) {
+          Object.assign(blockData, { quantity: selectedBlock.plannedQuantity });
+        }
+      }
+
+      // Determine if this is a new block or an update
+      if (!selectedBlock._id || selectedBlock._id === "") {
+        // Create a new block
+        const response = await productionBlocksApi.create(blockData);
+
+        // Type assertion for the response
+        const createdBlockResponse = response as { _id: string };
+
+        // Create a complete block object with the response data
+        const createdBlock: ProductionBlock = {
+          ...selectedBlock,
+          _id: createdBlockResponse._id || selectedBlock._id,
+        };
+
+        // Notify parent component
+        if (onBlockAdded) {
+          onBlockAdded(createdBlock);
+        }
+
+        toast.success("Production block created successfully");
+      } else {
+        // Update an existing block
+        await productionBlocksApi.update(selectedBlock._id, blockData);
+
+        // Notify parent component
+        if (onBlockUpdated) {
+          onBlockUpdated(selectedBlock);
+        }
+
+        toast.success("Production block updated successfully");
+      }
+
+      // Close dialog
+      onOpenChange(false);
+    } catch (err) {
+      console.error("Error saving production block:", err);
+      toast.error(
+        "Failed to save production block: " +
+          (err instanceof Error ? err.message : "Unknown error")
+      );
+    } finally {
+      setIsLoading((prev) => ({ ...prev, blocks: false }));
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Add Production Block</DialogTitle>
+          <DialogDescription>
+            Create a new production block on the calendar
+          </DialogDescription>
+        </DialogHeader>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSaveBlock();
+          }}
+          className="space-y-4 py-2"
+        >
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="machine">Machine</Label>
+              {isLoading.machines ? (
+                <div className="flex items-center space-x-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm text-muted-foreground">
+                    Loading machines...
+                  </span>
+                </div>
+              ) : (
+                <Select
+                  value={selectedBlock?.machine?._id || ""}
+                  onValueChange={(value) => {
+                    const machine = machines.find((m) => m._id === value);
+                    setSelectedBlock((prev) => ({
+                      ...prev,
+                      machine,
+                    }));
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a machine" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {machines.map((machine) => (
+                      <SelectItem key={machine._id} value={machine._id}>
+                        {machine.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="employee">Employee</Label>
+              {isLoading.employees ? (
+                <div className="flex items-center space-x-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm text-muted-foreground">
+                    Loading employees...
+                  </span>
+                </div>
+              ) : (
+                <Select
+                  value={selectedBlock?.assignedEmployee?._id || ""}
+                  onValueChange={(value) => {
+                    const employee = employees.find((e) => e._id === value);
+                    setSelectedBlock((prev) => ({
+                      ...prev,
+                      assignedEmployee: employee,
+                    }));
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select an employee" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {employees.map((employee) => (
+                      <SelectItem key={employee._id} value={employee._id}>
+                        {employee.name} ({employee.role})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            {/* Day Selection */}
+            <div className="grid w-full items-center gap-1.5">
+              <Label htmlFor="day">Day</Label>
+              <Select
+                value={selectedBlock.day || "Monday"} 
+                onValueChange={(day) =>
+                  setSelectedBlock({ ...selectedBlock, day })
                 }
-              }}
-              className="space-y-4 py-2"
-            >
-              <div className="space-y-3">
-                <div className="space-y-2">
-                  <Label htmlFor="machine">Machine</Label>
-                  {isLoading.machines ? (
-                    <div className="flex items-center space-x-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span className="text-sm text-muted-foreground">
-                        Loading machines...
-                      </span>
-                    </div>
-                  ) : (
-                    <Select
-                      value={selectedBlock?.machine?._id || ""}
-                      onValueChange={(value) => {
-                        const machine = machines.find((m) => m._id === value);
-                        setSelectedBlock((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                machine,
-                              }
-                            : null
-                        );
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a machine" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {machines.map((machine) => (
-                          <SelectItem key={machine._id} value={machine._id}>
-                            {machine.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                </div>
+                required
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select day" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Monday">Monday</SelectItem>
+                  <SelectItem value="Tuesday">Tuesday</SelectItem>
+                  <SelectItem value="Wednesday">Wednesday</SelectItem>
+                  <SelectItem value="Thursday">Thursday</SelectItem>
+                  <SelectItem value="Friday">Friday</SelectItem>
+                  <SelectItem value="Saturday">Saturday</SelectItem>
+                  <SelectItem value="Sunday">Sunday</SelectItem>
+                </SelectContent>
+              </Select>
+              {!selectedBlock.day && (
+                <p className="text-xs text-red-500 mt-1">Day is required</p>
+              )}
+            </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="employee">Employee</Label>
-                  {isLoading.employees ? (
-                    <div className="flex items-center space-x-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span className="text-sm text-muted-foreground">
-                        Loading employees...
-                      </span>
-                    </div>
-                  ) : (
-                    <Select
-                      value={selectedBlock?.assignedEmployee?._id || ""}
-                      onValueChange={(value) => {
-                        const employee = employees.find((e) => e._id === value);
-                        setSelectedBlock((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                assignedEmployee: employee,
-                              }
-                            : null
-                        );
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select an employee" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {employees.map((employee) => (
-                          <SelectItem key={employee._id} value={employee._id}>
-                            {employee.name} ({employee.role})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                </div>
+            {/* Block Type */}
+            <div className="space-y-2">
+              <Label htmlFor="blockType">Block Type</Label>
+              <Select
+                value={selectedBlock.blockType}
+                onValueChange={(value) => {
+                  setSelectedBlock((prev) => ({
+                    ...prev,
+                    blockType: value as any,
+                  }));
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="production">Production</SelectItem>
+                  <SelectItem value="prep">Preparation</SelectItem>
+                  <SelectItem value="cleaning">Cleaning</SelectItem>
+                  <SelectItem value="maintenance">Maintenance</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="blockType">Block Type</Label>
+            {/* Recipe selection (only for production blocks) */}
+            {selectedBlock.blockType === "production" && (
+              <div className="space-y-2">
+                <Label htmlFor="recipe">Recipe</Label>
+                {isLoading.recipes ? (
+                  <div className="flex items-center space-x-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm text-muted-foreground">
+                      Loading recipes...
+                    </span>
+                  </div>
+                ) : (
                   <Select
-                    value={selectedBlock?.blockType || "production"}
+                    value={selectedBlock.recipe?._id || ""}
                     onValueChange={(value) => {
-                      setSelectedBlock((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              blockType: value as any,
-                            }
-                          : null
-                      );
+                      const recipe = recipes.find((r) => r._id === value);
+                      setSelectedBlock((prev) => ({
+                        ...prev,
+                        recipe,
+                      }));
                     }}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select type" />
+                      <SelectValue placeholder="Select a recipe" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="production">Production</SelectItem>
-                      <SelectItem value="prep">Preparation</SelectItem>
-                      <SelectItem value="cleaning">Cleaning</SelectItem>
-                      <SelectItem value="maintenance">Maintenance</SelectItem>
+                      {recipes.map((recipe) => (
+                        <SelectItem key={recipe._id} value={recipe._id}>
+                          {recipe.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="startTime">Start Time</Label>
-                    <Input
-                      type="time"
-                      id="startTime"
-                      value={
-                        selectedBlock
-                          ? format(new Date(selectedBlock.startTime), "HH:mm")
-                          : "09:00"
-                      }
-                      onChange={(e) => {
-                        const [hours, minutes] = e.target.value
-                          .split(":")
-                          .map(Number);
-                        const startTime = new Date();
-                        startTime.setHours(hours, minutes, 0, 0);
-
-                        setSelectedBlock((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                startTime,
-                              }
-                            : null
-                        );
-                      }}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="endTime">End Time</Label>
-                    <Input
-                      type="time"
-                      id="endTime"
-                      value={
-                        selectedBlock
-                          ? format(new Date(selectedBlock.endTime), "HH:mm")
-                          : "10:00"
-                      }
-                      onChange={(e) => {
-                        const [hours, minutes] = e.target.value
-                          .split(":")
-                          .map(Number);
-                        const endTime = new Date();
-                        endTime.setHours(hours, minutes, 0, 0);
-
-                        setSelectedBlock((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                endTime,
-                              }
-                            : null
-                        );
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="notes">Notes (Optional)</Label>
-                  <Textarea
-                    id="notes"
-                    value={selectedBlock?.notes || ""}
-                    onChange={(e) => {
-                      setSelectedBlock((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              notes: e.target.value,
-                            }
-                          : null
-                      );
-                    }}
-                    placeholder="Add any additional notes here..."
-                  />
-                </div>
+                )}
               </div>
+            )}
 
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setIsAddDialogOpen(false);
-                    setSelectedBlock(null);
+            {/* Quantity field (only for production blocks) */}
+            {selectedBlock.blockType === "production" && (
+              <div className="space-y-2">
+                <Label htmlFor="plannedQuantity">Quantity (tubs)</Label>
+                <Input
+                  type="number"
+                  id="plannedQuantity"
+                  value={selectedBlock.plannedQuantity || ""}
+                  onChange={(e) => {
+                    const quantity = parseFloat(e.target.value);
+                    setSelectedBlock((prev) => ({
+                      ...prev,
+                      plannedQuantity: isNaN(quantity) ? undefined : quantity,
+                    }));
                   }}
-                  disabled={isLoading.blocks}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={!selectedBlock || isLoading.blocks}
-                >
-                  {isLoading.blocks ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />{" "}
-                      Saving...
-                    </>
-                  ) : (
-                    "Add Block"
-                  )}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
-    );
-  }
-);
+                  placeholder="Enter production quantity"
+                  min="0"
+                  step="0.5"
+                />
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="startTime">Start Time</Label>
+                <Input
+                  type="time"
+                  id="startTime"
+                  value={format(new Date(selectedBlock.startTime), "HH:mm")}
+                  onChange={(e) => {
+                    const [hours, minutes] = e.target.value
+                      .split(":")
+                      .map(Number);
+                    const startTime = new Date();
+                    startTime.setHours(hours, minutes, 0, 0);
+
+                    setSelectedBlock((prev) => ({
+                      ...prev,
+                      startTime,
+                    }));
+                  }}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="endTime">End Time</Label>
+                <Input
+                  type="time"
+                  id="endTime"
+                  value={format(new Date(selectedBlock.endTime), "HH:mm")}
+                  onChange={(e) => {
+                    const [hours, minutes] = e.target.value
+                      .split(":")
+                      .map(Number);
+                    const endTime = new Date();
+                    endTime.setHours(hours, minutes, 0, 0);
+
+                    setSelectedBlock((prev) => ({
+                      ...prev,
+                      endTime,
+                    }));
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notes (Optional)</Label>
+              <Textarea
+                id="notes"
+                value={selectedBlock.notes || ""}
+                onChange={(e) => {
+                  setSelectedBlock((prev) => ({
+                    ...prev,
+                    notes: e.target.value,
+                  }));
+                }}
+                placeholder="Add any additional notes here..."
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isLoading.blocks}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isLoading.blocks}>
+              {isLoading.blocks ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...
+                </>
+              ) : (
+                "Add Block"
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 export default ScheduleBuilder;

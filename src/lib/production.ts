@@ -1,5 +1,9 @@
 // Production Plan status options
-export type ProductionPlanStatus = "draft" | "active" | "completed" | "archived";
+export type ProductionPlanStatus =
+  | "draft"
+  | "active"
+  | "completed"
+  | "archived";
 
 // Recipe in production plan
 export interface PlanRecipe {
@@ -50,7 +54,11 @@ export interface ProductionPlanUpdateInput {
 export type ProductionBlockType = "prep" | "production" | "cleaning";
 
 // Status options for production blocks
-export type ProductionBlockStatus = "scheduled" | "in-progress" | "completed" | "cancelled";
+export type ProductionBlockStatus =
+  | "scheduled"
+  | "in-progress"
+  | "completed"
+  | "cancelled";
 
 // Main ProductionBlock interface
 export interface ProductionBlock {
@@ -63,6 +71,7 @@ export interface ProductionBlock {
   recipeId?: string;
   quantity?: number;
   status: ProductionBlockStatus;
+  day: string;
   planId: string;
   notes?: string;
   actualStartTime?: Date;

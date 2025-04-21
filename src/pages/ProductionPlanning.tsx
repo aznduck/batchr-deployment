@@ -35,7 +35,7 @@ import ScheduleBlock from "@/components/Planning/ScheduleBlock";
 import { cn } from "@/lib/utils";
 import { Recipe } from "@/lib/data";
 import { Machine, MachineStatus } from "@/lib/machine";
-import { employeesApi, machinesApi, recipesApi } from "@/lib/api";
+import { employeesApi, machinesApi, recipesApi, productionPlansApi } from "@/lib/api";
 import {
   Dialog,
   DialogClose,
@@ -73,6 +73,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import ScheduleBuilder from "@/components/Planning/ScheduleBuilder";
+import AddProductionPlanDialog from "@/components/Planning/AddProductionPlanDialog";
 
 // Custom loading spinner component with reliable animation
 const LoadingSpinner = () => (
@@ -134,33 +135,33 @@ const WeeklyOverview = () => {
 };
 
 const ProductionPlansList = () => {
-  // Placeholder data - this would come from the backend API
-  const plans = [
-    {
-      id: "1",
-      name: "Week of April 10th",
-      weekStartDate: "2025-04-10",
-      status: "active",
-      completionStatus: 65,
-      recipesCount: 12,
-    },
-    {
-      id: "2",
-      name: "Week of April 3rd",
-      weekStartDate: "2025-04-03",
-      status: "completed",
-      completionStatus: 100,
-      recipesCount: 10,
-    },
-    {
-      id: "3",
-      name: "Week of March 27th",
-      weekStartDate: "2025-03-27",
-      status: "archived",
-      completionStatus: 100,
-      recipesCount: 11,
-    },
-  ];
+  const [plans, setPlans] = useState<ProductionPlan[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<ProductionPlan | null>(null);
+  const [isEditPlanDialogOpen, setIsEditPlanDialogOpen] = useState(false);
+  const [isAddBlockDialogOpen, setIsAddBlockDialogOpen] = useState(false);
+
+  // Fetch production plans from API
+  const fetchPlans = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const fetchedPlans = await productionPlansApi.getAll();
+      setPlans(fetchedPlans as ProductionPlan[]);
+    } catch (err) {
+      console.error("Error fetching production plans:", err);
+      setError("Failed to load production plans");
+      toast.error("Failed to load production plans");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fetch plans on component mount
+  useEffect(() => {
+    fetchPlans();
+  }, []);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -198,106 +199,184 @@ const ProductionPlansList = () => {
       <div className="flex justify-between items-center">
         <h3 className="font-medium">Production Plans</h3>
         <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={fetchPlans} disabled={isLoading}>
+            <RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} />
+            Refresh
+          </Button>
           <Button variant="outline" size="sm">
             <Download className="h-4 w-4 mr-2" />
             Export
-          </Button>
-          <Button variant="outline" size="sm">
-            <Upload className="h-4 w-4 mr-2" />
-            Import
           </Button>
         </div>
       </div>
 
       <div className="space-y-3">
-        {plans.map((plan) => (
-          <Card key={plan.id} className="p-4">
-            <div className="flex justify-between items-center">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h4 className="font-medium">{plan.name}</h4>
-                  {getStatusBadge(plan.status)}
+        {isLoading ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : error ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <AlertCircle className="h-8 w-8 mx-auto mb-2" />
+            <p>{error}</p>
+            <Button variant="outline" size="sm" className="mt-2" onClick={fetchPlans}>
+              Try Again
+            </Button>
+          </div>
+        ) : plans.length === 0 ? (
+          <div className="text-center py-8 border rounded-md border-dashed p-6">
+            <Layers className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+            <p className="text-muted-foreground">No production plans found</p>
+            <p className="text-sm text-muted-foreground mb-4">
+              Create your first production plan to get started
+            </p>
+          </div>
+        ) : (
+          plans.map((plan) => (
+            <Card key={plan._id} className="p-4">
+              <div className="flex justify-between items-center">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-medium">{plan.name}</h4>
+                    {getStatusBadge(plan.status)}
+                  </div>
+                  <div className="text-sm text-muted-foreground mt-1">
+                    {plan.recipes?.length || 0} recipes •{" "}
+                    {new Date(plan.weekStartDate).toLocaleDateString()}
+                  </div>
                 </div>
-                <div className="text-sm text-muted-foreground mt-1">
-                  {plan.recipesCount} recipes •{" "}
-                  {new Date(plan.weekStartDate).toLocaleDateString()}
+
+                <div className="flex items-center gap-2">
+                  <div className="text-right mr-2">
+                    <div className="text-sm font-medium">
+                      {plan.completionStatus || 0}%
+                    </div>
+                    <div className="text-xs text-muted-foreground">Complete</div>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => {
+                    setSelectedPlan(plan);
+                    setIsEditPlanDialogOpen(true);
+                  }}>
+                    Edit
+                  </Button>
+                  <Button variant="outline" size="sm">
+                    View
+                  </Button>
                 </div>
               </div>
-
-              <div className="flex items-center gap-2">
-                <div className="text-right mr-2">
-                  <div className="text-sm font-medium">
-                    {plan.completionStatus}%
-                  </div>
-                  <div className="text-xs text-muted-foreground">Complete</div>
+            </Card>
+          ))
+        )}
+      </div>
+      
+      {/* Edit Plan Dialog */}
+      {selectedPlan && (
+        <Dialog open={isEditPlanDialogOpen} onOpenChange={setIsEditPlanDialogOpen}>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>Edit Plan: {selectedPlan.name}</DialogTitle>
+              <DialogDescription>
+                Edit plan details or add production blocks to this plan.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="py-4">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-sm font-medium">Plan Details</h3>
+                <div className="text-sm text-muted-foreground">
+                  Week of {new Date(selectedPlan.weekStartDate).toLocaleDateString()}
                 </div>
-                <Button variant="outline" size="sm">
-                  View
-                </Button>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-sm font-medium">Production Blocks</h3>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      setIsAddBlockDialogOpen(true);
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Block
+                  </Button>
+                </div>
+                
+                <div className="border rounded-md p-4 min-h-[100px]">
+                  {selectedPlan.blocks && selectedPlan.blocks.length > 0 ? (
+                    <div className="space-y-2">
+                      <div className="text-sm">
+                        {selectedPlan.blocks.length} blocks in this plan
+                      </div>
+                      {/* We could list the blocks here, but that's a future enhancement */}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-[100px] text-center">
+                      <p className="text-muted-foreground">No blocks added yet</p>
+                      <p className="text-xs text-muted-foreground">
+                        Click "Add Block" to add production blocks to this plan
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </Card>
-        ))}
-      </div>
+            
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={() => setIsEditPlanDialogOpen(false)}
+              >
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+      
+      {/* Add Block Dialog */}
+      {selectedPlan && (
+        <ScheduleBuilder
+          isOpen={isAddBlockDialogOpen}
+          onOpenChange={setIsAddBlockDialogOpen}
+          planId={selectedPlan._id}
+          onBlockAdded={() => {
+            // Refresh the plan data after adding a block
+            fetchPlans();
+            toast.success("Block added to plan successfully");
+          }}
+        />
+      )}
     </div>
   );
 };
 
 const ProductionPlanning = () => {
   const [activeTab, setActiveTab] = useState<string>("overview"); // Keep as string to work with Tabs component
+  const [isAddBlockDialogOpen, setIsAddBlockDialogOpen] = useState(false);
+  const [isAddPlanDialogOpen, setIsAddPlanDialogOpen] = useState(false);
 
   const handleCreatePlan = () => {
-    // This would open a modal or navigate to create plan page
-    toast.info("Create plan functionality will be implemented in later steps");
+    // Open the add plan dialog
+    setIsAddPlanDialogOpen(true);
   };
-
-  const [recipes, setRecipes] = useState<Recipe[]>([
-    {
-      _id: "r1",
-      name: "Vanilla",
-      ingredients: [],
-      currentInventory: 12,
-      weeklyProductionGoal: 36,
-      plannedProduction: 24,
-      goalAchievement: 66,
-      batches: [],
-    },
-    {
-      _id: "r2",
-      name: "Chocolate",
-      ingredients: [],
-      currentInventory: 8,
-      weeklyProductionGoal: 24,
-      plannedProduction: 20,
-      goalAchievement: 83,
-      batches: [],
-    },
-    {
-      _id: "r3",
-      name: "Strawberry",
-      ingredients: [],
-      currentInventory: 4,
-      weeklyProductionGoal: 18,
-      plannedProduction: 4,
-      goalAchievement: 22,
-      batches: [],
-    },
-  ]);
 
   // Add callback handlers for ScheduleBuilder
   const handleBlockAdded = (newBlock: ProductionBlock) => {
     toast.success(`New ${newBlock.blockType} block added to schedule`);
-    // Here you would typically update any parent state if needed
+    // Close the dialog
+    setIsAddBlockDialogOpen(false);
   };
 
   const handleBlockUpdated = (updatedBlock: ProductionBlock) => {
     toast.success(`Block updated successfully`);
-    // Here you would typically update any parent state if needed
+    // Close the dialog
+    setIsAddBlockDialogOpen(false);
   };
 
   const handleBlockDeleted = (blockId: string) => {
     toast.success(`Block removed from schedule`);
-    // Here you would typically update any parent state if needed
   };
 
   return (
@@ -338,8 +417,8 @@ const ProductionPlanning = () => {
               Load Schedule
             </Button>
             <Button onClick={handleCreatePlan}>
-              <Plus className="h-4 w-4 mr-2" />
-              New Schedule
+              <Plus className="h-4 w-4 mr-1" />
+              Create Plan
             </Button>
           </div>
         </div>
@@ -367,33 +446,22 @@ const ProductionPlanning = () => {
             <div className="p-4">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-semibold">Production Calendar</h2>
-                <Button
-                  onClick={() => {
-                    // Create a default block
-                    const defaultBlock: ProductionBlock = {
-                      _id: "",
-                      startTime: new Date(new Date().setHours(9, 0, 0, 0)), // Default 9 AM
-                      endTime: new Date(new Date().setHours(10, 0, 0, 0)), // Default 10 AM
-                      blockType: "production",
-                      status: "scheduled",
-                      notes: "",
-                    };
-
-                    // Open the Add Block dialog in ScheduleBuilder
-                    const scheduleBuilder = document.getElementById(
-                      "schedule-builder"
-                    ) as any;
-                    if (scheduleBuilder && scheduleBuilder.openAddDialog) {
-                      scheduleBuilder.openAddDialog(defaultBlock);
-                    }
-                  }}
-                >
+                <Button onClick={() => setIsAddBlockDialogOpen(true)}>
                   <Plus className="h-4 w-4 mr-1" />
                   Add Block
                 </Button>
               </div>
 
               <ScheduleView />
+
+              {/* Simple dialog approach */}
+              <ScheduleBuilder
+                isOpen={isAddBlockDialogOpen}
+                onOpenChange={setIsAddBlockDialogOpen}
+                onBlockAdded={handleBlockAdded}
+                onBlockUpdated={handleBlockUpdated}
+                onBlockDeleted={handleBlockDeleted}
+              />
             </div>
           </TabsContent>
 
@@ -402,6 +470,15 @@ const ProductionPlanning = () => {
           </TabsContent>
         </Tabs>
       </div>
+      
+      {/* Add Production Plan Dialog */}
+      <AddProductionPlanDialog
+        isOpen={isAddPlanDialogOpen}
+        onClose={() => setIsAddPlanDialogOpen(false)}
+        onPlanAdded={() => {
+          // Here we could refresh the list of plans
+        }}
+      />
     </Layout>
   );
 };

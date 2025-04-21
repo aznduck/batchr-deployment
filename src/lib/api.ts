@@ -217,9 +217,10 @@ export const productionBlocksApi = {
     blockType: "prep" | "production" | "cleaning" | "maintenance";
     machineId: string;
     employeeId: string;
+    day: string;
     recipeId?: string;
     quantity?: number;
-    planId: string;
+    planId?: string;
     notes?: string;
   }) {
     return apiRequest("/production-blocks", "POST", data);

@@ -8,6 +8,7 @@ export interface ProductionBlock {
   startTime: string | Date;
   endTime: string | Date;
   blockType: "prep" | "production" | "cleaning" | "maintenance";
+  day: string;
   recipe?: Recipe;
   machine?: Machine;
   assignedEmployee?: Employee;

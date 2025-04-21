@@ -13,6 +13,20 @@ const ProductionBlockSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    // Day of the week
+    day: {
+      type: String,
+      enum: [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday",
+      ],
+      required: true,
+    },
     // Block type
     blockType: {
       type: String,
@@ -46,7 +60,6 @@ const ProductionBlockSchema = new mongoose.Schema(
         return this.blockType === "production";
       },
       min: 0,
-      get: (v: number) => parseFloat(v.toFixed(2)),
     },
     // Block status
     status: {
@@ -58,7 +71,7 @@ const ProductionBlockSchema = new mongoose.Schema(
     planId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "ProductionPlan",
-      required: true,
+      required: false,
     },
     // Notes for the production block
     notes: {
@@ -74,7 +87,6 @@ const ProductionBlockSchema = new mongoose.Schema(
     actualQuantity: {
       type: Number,
       min: 0,
-      get: (v: number) => parseFloat(v.toFixed(2)),
     },
     // Creator and creation time
     createdBy: {

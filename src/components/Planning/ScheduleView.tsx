@@ -68,7 +68,6 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
   const handleTimeSlotClick = (day: Date, hour: number, minute: number) => {
     setSelectedDate(day);
     // You could add functionality to create a new block at this time
-    console.log(`Clicked on ${format(day, "yyyy-MM-dd")} at ${hour}:${minute}`);
   };
 
   // Handle block click to show details
@@ -270,8 +269,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                                 <div className="flex items-center gap-1 text-muted-foreground">
                                   <Utensils className="h-4 w-4" />
                                   <span>
-                                    {block.plannedQuantity || 0}{" "}
-                                    units
+                                    {block.plannedQuantity || 0} units
                                   </span>
                                 </div>
                               )}

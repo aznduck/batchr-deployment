@@ -6,11 +6,11 @@ import Machine from "../models/Machine";
 import Employee from "../models/Employee";
 import { Session } from "express-session";
 import { Document, Types } from "mongoose";
-import { 
-  calculateProductionTime, 
-  calculateEndTime, 
+import {
+  calculateProductionTime,
+  calculateEndTime,
   isTimeSlotAvailable,
-  suggestProductionSchedule
+  suggestProductionSchedule,
 } from "../utils/productionTimeCalculator";
 
 const router = express.Router();
@@ -122,6 +122,7 @@ router.post("/", ensureAuth, async (req: AuthedRequest, res: Response) => {
       employeeId,
       recipeId,
       quantity,
+      day,
       planId,
       notes,
     } = req.body;
@@ -133,11 +134,11 @@ router.post("/", ensureAuth, async (req: AuthedRequest, res: Response) => {
       !blockType ||
       !machineId ||
       !employeeId ||
-      !planId
+      !day
     ) {
       return res.status(400).json({
         message:
-          "Missing required fields (startTime, endTime, blockType, machineId, employeeId, planId)",
+          "Missing required fields (startTime, endTime, blockType, machineId, employeeId, day)",
       });
     }
 
@@ -197,13 +198,15 @@ router.post("/", ensureAuth, async (req: AuthedRequest, res: Response) => {
     }
 
     // Validate plan exists
-    const plan = await ProductionPlan.findOne({
-      _id: planId,
-      owner: req.session.user!.id,
-    });
+    if (planId) {
+      const plan = await ProductionPlan.findOne({
+        _id: planId,
+        owner: req.session.user!.id,
+      });
 
-    if (!plan) {
-      return res.status(404).json({ message: "Production plan not found" });
+      if (!plan) {
+        return res.status(404).json({ message: "Production plan not found" });
+      }
     }
 
     // Check for scheduling conflicts
@@ -231,11 +234,9 @@ router.post("/", ensureAuth, async (req: AuthedRequest, res: Response) => {
       }
 
       if (quantity === undefined || quantity <= 0) {
-        return res
-          .status(400)
-          .json({
-            message: "Valid quantity is required for production blocks",
-          });
+        return res.status(400).json({
+          message: "Valid quantity is required for production blocks",
+        });
       }
 
       // Validate recipe exists
@@ -256,6 +257,7 @@ router.post("/", ensureAuth, async (req: AuthedRequest, res: Response) => {
       blockType,
       machineId,
       employeeId,
+      day, // Add the day field here
       planId,
       notes: notes || "",
       status: "scheduled",
@@ -275,33 +277,40 @@ router.post("/", ensureAuth, async (req: AuthedRequest, res: Response) => {
       });
 
       // Add or update recipe in plan
-      const recipeIndex = plan.recipes.findIndex(
-        (r: any) => r.recipeId.toString() === recipeId
-      );
+      if (planId) {
+        const plan = await ProductionPlan.findById(planId);
+        if (plan) {
+          const recipeIndex = plan.recipes.findIndex(
+            (r: any) => r.recipeId.toString() === recipeId
+          );
 
-      if (recipeIndex !== -1) {
-        // Recipe already in plan, update planned amount
-        plan.recipes[recipeIndex].plannedAmount += quantity;
-      } else {
-        // Add recipe to plan
-        plan.recipes.push({
-          recipeId,
-          plannedAmount: quantity,
-          completedAmount: 0,
-        });
+          if (recipeIndex !== -1) {
+            // Recipe already in plan, update planned amount
+            plan.recipes[recipeIndex].plannedAmount += quantity;
+          } else {
+            // Add recipe to plan
+            plan.recipes.push({
+              recipeId,
+              plannedAmount: quantity,
+              completedAmount: 0,
+            });
+          }
+
+          await plan.save();
+        }
       }
-
-      await plan.save();
     }
 
     await newBlock.save();
 
     // Add block to production plan
-    await ProductionPlan.findByIdAndUpdate(planId, {
-      $push: { blocks: newBlock._id },
-      lastModifiedBy: req.session.user!.id,
-      lastModifiedAt: new Date(),
-    });
+    if (planId) {
+      await ProductionPlan.findByIdAndUpdate(planId, {
+        $push: { blocks: newBlock._id },
+        lastModifiedBy: req.session.user!.id,
+        lastModifiedAt: new Date(),
+      });
+    }
 
     // Get the block with populated references
     const populatedBlock = await ProductionBlock.findById(newBlock._id)
@@ -330,6 +339,7 @@ router.put("/:id", ensureAuth, async (req: AuthedRequest, res: Response) => {
       quantity,
       notes,
       status,
+      day,
     } = req.body;
 
     // Find the existing block
@@ -343,11 +353,13 @@ router.put("/:id", ensureAuth, async (req: AuthedRequest, res: Response) => {
     }
 
     // Check if the plan is completed or archived
-    const plan = await ProductionPlan.findById(existingBlock.planId);
-    if (plan && (plan.status === "completed" || plan.status === "archived")) {
-      return res.status(400).json({
-        message: "Cannot update blocks in a completed or archived plan",
-      });
+    if (existingBlock.planId) {
+      const plan = await ProductionPlan.findById(existingBlock.planId);
+      if (plan && (plan.status === "completed" || plan.status === "archived")) {
+        return res.status(400).json({
+          message: "Cannot update blocks in a completed or archived plan",
+        });
+      }
     }
 
     // Build update object
@@ -466,12 +478,14 @@ router.put("/:id", ensureAuth, async (req: AuthedRequest, res: Response) => {
           });
 
           // Update plan recipes
-          await updatePlanRecipe(
-            existingBlock.planId,
-            existingBlock.recipeId,
-            -(existingBlock.quantity || 0),
-            req.session.user!.id
-          );
+          if (existingBlock.planId) {
+            await updatePlanRecipe(
+              existingBlock.planId,
+              existingBlock.recipeId,
+              -(existingBlock.quantity || 0),
+              req.session.user!.id
+            );
+          }
         }
 
         // Add planned production to new recipe
@@ -480,12 +494,14 @@ router.put("/:id", ensureAuth, async (req: AuthedRequest, res: Response) => {
         });
 
         // Update plan recipes
-        await updatePlanRecipe(
-          existingBlock.planId,
-          recipeId,
-          quantity || existingBlock.quantity || 0,
-          req.session.user!.id
-        );
+        if (existingBlock.planId) {
+          await updatePlanRecipe(
+            existingBlock.planId,
+            recipeId,
+            quantity || existingBlock.quantity || 0,
+            req.session.user!.id
+          );
+        }
 
         updateData.recipeId = recipeId;
         quantityDifference = 0; // Already handled the quantity change
@@ -496,12 +512,14 @@ router.put("/:id", ensureAuth, async (req: AuthedRequest, res: Response) => {
         });
 
         // Update plan recipes
-        await updatePlanRecipe(
-          existingBlock.planId,
-          existingBlock.recipeId,
-          quantityDifference,
-          req.session.user!.id
-        );
+        if (existingBlock.planId) {
+          await updatePlanRecipe(
+            existingBlock.planId,
+            existingBlock.recipeId,
+            quantityDifference,
+            req.session.user!.id
+          );
+        }
       }
     }
 
@@ -544,12 +562,14 @@ router.put("/:id", ensureAuth, async (req: AuthedRequest, res: Response) => {
         });
 
         // Update completed amount in the plan
-        await updatePlanRecipeCompletion(
-          existingBlock.planId,
-          existingBlock.recipeId,
-          actualQuantity,
-          req.session.user!.id
-        );
+        if (existingBlock.planId) {
+          await updatePlanRecipeCompletion(
+            existingBlock.planId,
+            existingBlock.recipeId,
+            actualQuantity,
+            req.session.user!.id
+          );
+        }
 
         // Set actual times
         updateData.actualStartTime =
@@ -570,18 +590,25 @@ router.put("/:id", ensureAuth, async (req: AuthedRequest, res: Response) => {
         });
 
         // Update plan recipe
-        await updatePlanRecipe(
-          existingBlock.planId,
-          existingBlock.recipeId,
-          -(existingBlock.quantity || 0),
-          req.session.user!.id
-        );
+        if (existingBlock.planId) {
+          await updatePlanRecipe(
+            existingBlock.planId,
+            existingBlock.recipeId,
+            -(existingBlock.quantity || 0),
+            req.session.user!.id
+          );
+        }
       }
     }
 
     // Add notes if provided
     if (notes !== undefined) {
       updateData.notes = notes;
+    }
+
+    // Add day if provided
+    if (day !== undefined) {
+      updateData.day = day;
     }
 
     // Update actual times and quantity if provided
@@ -633,15 +660,17 @@ router.delete("/:id", ensureAuth, async (req: AuthedRequest, res: Response) => {
     }
 
     // Check if the plan is completed or archived
-    const plan = await ProductionPlan.findById(block.planId);
-    if (plan && (plan.status === "completed" || plan.status === "archived")) {
-      return res.status(400).json({
-        message: "Cannot delete blocks from a completed or archived plan",
-      });
+    if (block.planId) {
+      const plan = await ProductionPlan.findById(block.planId);
+      if (plan && (plan.status === "completed" || plan.status === "archived")) {
+        return res.status(400).json({
+          message: "Cannot delete blocks from a completed or archived plan",
+        });
+      }
     }
 
     // Handle recipe planned production for production blocks
-    if (block.blockType === "production" && block.recipeId) {
+    if (block.blockType === "production" && block.recipeId && block.planId) {
       // Remove from recipe planned production
       await Recipe.findByIdAndUpdate(block.recipeId, {
         $inc: { plannedProduction: -(block.quantity || 0) },
@@ -657,11 +686,13 @@ router.delete("/:id", ensureAuth, async (req: AuthedRequest, res: Response) => {
     }
 
     // Remove block from production plan
-    await ProductionPlan.findByIdAndUpdate(block.planId, {
-      $pull: { blocks: block._id },
-      lastModifiedBy: req.session.user!.id,
-      lastModifiedAt: new Date(),
-    });
+    if (block.planId) {
+      await ProductionPlan.findByIdAndUpdate(block.planId, {
+        $pull: { blocks: block._id },
+        lastModifiedBy: req.session.user!.id,
+        lastModifiedAt: new Date(),
+      });
+    }
 
     // Delete the block
     await ProductionBlock.findOneAndDelete({
@@ -787,7 +818,8 @@ router.post(
 
       if (!machineId || !employeeId || !startTime || !endTime) {
         return res.status(400).json({
-          message: "Machine ID, employee ID, start time, and end time are required",
+          message:
+            "Machine ID, employee ID, start time, and end time are required",
         });
       }
 
@@ -803,7 +835,9 @@ router.post(
       res.json({ available: isAvailable });
     } catch (err) {
       console.error("Error checking time slot availability:", err);
-      res.status(500).json({ message: "Error checking time slot availability" });
+      res
+        .status(500)
+        .json({ message: "Error checking time slot availability" });
     }
   }
 );
@@ -821,7 +855,8 @@ router.post(
         quantity,
         planId,
         startTime,
-        notes
+        notes,
+        day,
       } = req.body;
 
       if (
@@ -829,38 +864,52 @@ router.post(
         !employeeId ||
         !recipeId ||
         !quantity ||
-        !planId ||
-        !startTime
+        !startTime ||
+        !day
       ) {
         return res.status(400).json({
           message:
-            "Missing required fields (machineId, employeeId, recipeId, quantity, planId, startTime)",
+            "Missing required fields (machineId, employeeId, recipeId, quantity, startTime, day)",
         });
       }
 
       // Validate plan exists
-      const plan = await ProductionPlan.findOne({
-        _id: planId,
-        owner: req.session.user!.id,
-      });
+      if (planId) {
+        const plan = await ProductionPlan.findOne({
+          _id: planId,
+          owner: req.session.user!.id,
+        });
 
-      if (!plan) {
-        return res.status(404).json({ message: "Production plan not found" });
+        if (!plan) {
+          return res.status(404).json({ message: "Production plan not found" });
+        }
       }
 
       // Calculate times
-      const timeCalculation = await calculateProductionTime(machineId, quantity);
-      
+      const timeCalculation = await calculateProductionTime(
+        machineId,
+        quantity
+      );
+
       // Calculate block times
       const prepStartTime = new Date(startTime);
-      const prepEndTime = calculateEndTime(prepStartTime, timeCalculation.recommendedPrepMinutes);
-      
+      const prepEndTime = calculateEndTime(
+        prepStartTime,
+        timeCalculation.recommendedPrepMinutes
+      );
+
       const productionStartTime = prepEndTime;
-      const productionEndTime = calculateEndTime(productionStartTime, timeCalculation.productionMinutes);
-      
+      const productionEndTime = calculateEndTime(
+        productionStartTime,
+        timeCalculation.productionMinutes
+      );
+
       const cleaningStartTime = productionEndTime;
-      const cleaningEndTime = calculateEndTime(cleaningStartTime, timeCalculation.recommendedCleaningMinutes);
-      
+      const cleaningEndTime = calculateEndTime(
+        cleaningStartTime,
+        timeCalculation.recommendedCleaningMinutes
+      );
+
       // Check for scheduling conflicts
       const isAvailable = await isTimeSlotAvailable(
         machineId,
@@ -869,13 +918,13 @@ router.post(
         cleaningEndTime,
         req.session.user!.id
       );
-      
+
       if (!isAvailable) {
         return res.status(409).json({
           message: "Scheduling conflict detected",
         });
       }
-      
+
       // Create prep block
       const prepBlock = new ProductionBlock({
         startTime: prepStartTime,
@@ -884,13 +933,13 @@ router.post(
         machineId,
         employeeId,
         planId,
-        status: "scheduled",
         notes: notes ? `${notes} - Prep` : "Preparation block",
+        day,
         createdBy: req.session.user!.id,
         createdAt: new Date(),
         owner: req.session.user!.id,
       });
-      
+
       // Create production block
       const productionBlock = new ProductionBlock({
         startTime: productionStartTime,
@@ -901,13 +950,13 @@ router.post(
         recipeId,
         quantity,
         planId,
-        status: "scheduled",
         notes: notes ? `${notes} - Production` : "Production block",
+        day,
         createdBy: req.session.user!.id,
         createdAt: new Date(),
         owner: req.session.user!.id,
       });
-      
+
       // Create cleaning block
       const cleaningBlock = new ProductionBlock({
         startTime: cleaningStartTime,
@@ -916,42 +965,46 @@ router.post(
         machineId,
         employeeId,
         planId,
-        status: "scheduled",
         notes: notes ? `${notes} - Cleaning` : "Cleaning block",
+        day,
         createdBy: req.session.user!.id,
         createdAt: new Date(),
         owner: req.session.user!.id,
       });
-      
+
       // Save all blocks
       await prepBlock.save();
       await productionBlock.save();
       await cleaningBlock.save();
-      
+
       // Add blocks to production plan
-      await ProductionPlan.findByIdAndUpdate(planId, {
-        $push: { 
-          blocks: { 
-            $each: [prepBlock._id, productionBlock._id, cleaningBlock._id] 
-          } 
-        },
-        lastModifiedBy: req.session.user!.id,
-        lastModifiedAt: new Date(),
-      });
-      
+      if (planId) {
+        await ProductionPlan.findByIdAndUpdate(planId, {
+          $push: {
+            blocks: {
+              $each: [prepBlock._id, productionBlock._id, cleaningBlock._id],
+            },
+          },
+          lastModifiedBy: req.session.user!.id,
+          lastModifiedAt: new Date(),
+        });
+      }
+
       // Update recipe planned production
       await Recipe.findByIdAndUpdate(recipeId, {
         $inc: { plannedProduction: quantity },
       });
-      
+
       // Add or update recipe in plan
-      await updatePlanRecipe(
-        planId,
-        recipeId,
-        quantity,
-        req.session.user!.id
-      );
-      
+      if (planId) {
+        await updatePlanRecipe(
+          planId,
+          recipeId,
+          quantity,
+          req.session.user!.id
+        );
+      }
+
       res.status(201).json({
         message: "Production blocks created successfully",
         blocks: {
@@ -1055,6 +1108,8 @@ async function updatePlanRecipe(
   quantityChange: number,
   ownerId: string
 ) {
+  if (!planId) return;
+
   const plan = await ProductionPlan.findOne({
     _id: planId,
     owner: ownerId,
@@ -1095,6 +1150,8 @@ async function updatePlanRecipeCompletion(
   completedQuantity: number,
   ownerId: string
 ) {
+  if (!planId) return;
+
   const plan = await ProductionPlan.findOne({
     _id: planId,
     owner: ownerId,

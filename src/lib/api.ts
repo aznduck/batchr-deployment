@@ -191,6 +191,10 @@ export const productionPlansApi = {
   import(importData: any) {
     return apiRequest("/production-plans/import", "POST", { importData });
   },
+  // Get all blocks associated with a production plan
+  getBlocks(planId: string) {
+    return apiRequest(`/production-plans/${planId}/blocks`);
+  },
 };
 
 // Production Blocks API
@@ -263,6 +267,7 @@ export const productionBlocksApi = {
     employeeId: string;
     startTime: Date;
     endTime: Date;
+    day: string;
     blockId?: string;
   }) {
     return apiRequest("/production-blocks/check-availability", "POST", data);

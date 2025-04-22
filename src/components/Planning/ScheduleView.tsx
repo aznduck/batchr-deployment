@@ -36,7 +36,20 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
         setLoading(true);
         setError(null);
         const fetchedBlocks = await productionBlocksApi.getAll();
-        setBlocks(fetchedBlocks as ProductionBlock[]);
+
+        // Check if blocks have populated recipe references
+        const processedBlocks = (fetchedBlocks as any[]).map((block) => {
+          // In the API response, recipe data is in recipeId when populated
+          if (block.recipeId && typeof block.recipeId === "object") {
+            return {
+              ...block,
+              recipe: block.recipeId, // Map API's recipeId object to recipe property
+            };
+          }
+          return block;
+        });
+
+        setBlocks(processedBlocks as ProductionBlock[]);
       } catch (err) {
         console.error("Error fetching production blocks:", err);
         setError("Failed to load production schedule. Please try again later.");
@@ -91,20 +104,27 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
           )}
         </CardTitle>
       </CardHeader>
+      <div className="px-4 pb-2 flex flex-wrap items-center gap-2 text-xs">
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded-sm bg-blue-100 border border-blue-300"></div>
+          <span>Prep</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded-sm bg-green-100 border border-green-300"></div>
+          <span>Production</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded-sm bg-purple-100 border border-purple-300"></div>
+          <span>Cleaning</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded-sm bg-orange-100 border border-orange-300"></div>
+          <span>Other</span>
+        </div>
+      </div>
       <CardContent className="p-0 flex-1 flex flex-col">
         <Tabs defaultValue="calendar" className="flex-1 flex flex-col">
-          <div className="px-4 border-b">
-            <TabsList>
-              <TabsTrigger value="calendar" className="flex items-center gap-1">
-                <Calendar className="h-4 w-4" />
-                <span>Calendar</span>
-              </TabsTrigger>
-              <TabsTrigger value="list" className="flex items-center gap-1">
-                <Clock className="h-4 w-4" />
-                <span>Day View</span>
-              </TabsTrigger>
-            </TabsList>
-          </div>
+          <div className="px-4 border-b"></div>
 
           <TabsContent
             value="calendar"
@@ -136,30 +156,36 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
               <div className="flex-1 relative">
                 <ScheduleCalendar onTimeSlotClick={handleTimeSlotClick} />
 
-                {/* Rendering blocks for each day */}
-                {Object.entries(blocksByDay).map(([dateStr, dayBlocks]) => {
-                  // Find which column (day) this block belongs to
-                  const blockDate = parseISO(dateStr);
-                  const dayIndex = [0, 1, 2, 3, 4, 5, 6].find((i) =>
-                    isSameDay(
-                      blockDate,
-                      new Date(
-                        blockDate.getFullYear(),
-                        blockDate.getMonth(),
-                        blockDate.getDate() - blockDate.getDay() + i + 1
-                      )
-                    )
-                  );
+                {/* Rendering blocks for the week based on their assigned day property */}
+                {blocks.map((block) => {
+                  // Map day string to column index (0-6, Monday to Sunday)
+                  const dayToIndex = {
+                    Monday: 0,
+                    Tuesday: 1,
+                    Wednesday: 2,
+                    Thursday: 3,
+                    Friday: 4,
+                    Saturday: 5,
+                    Sunday: 6,
+                  };
 
+                  const dayIndex =
+                    dayToIndex[block.day as keyof typeof dayToIndex];
+
+                  // Skip if day is invalid
                   if (dayIndex === undefined) return null;
 
-                  return dayBlocks.map((block) => (
+                  return (
                     <div
                       key={block._id}
                       className="absolute"
                       style={{
-                        left: `calc(4rem + ${dayIndex * (100 / 7)}%)`,
-                        width: `calc(${100 / 7}% - 8px)`,
+                        // Position blocks exactly aligned with calendar columns
+                        left: `calc(4rem + (${dayIndex} * (100% - 4rem) / 7))`,
+                        width: `calc((100% - 4rem) / 7)`,
+                        top: 0,
+                        height: "100%",
+                        pointerEvents: "none",
                       }}
                     >
                       <ScheduleBlock
@@ -176,7 +202,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                         onClick={() => handleBlockClick(block)}
                       />
                     </div>
-                  ));
+                  );
                 })}
               </div>
             )}

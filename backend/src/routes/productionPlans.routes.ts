@@ -297,6 +297,37 @@ router.delete("/:id", ensureAuth, async (req: AuthedRequest, res: Response) => {
   }
 });
 
+// Get all blocks associated with a production plan
+router.get(
+  "/:id/blocks",
+  ensureAuth,
+  async (req: AuthedRequest, res: Response) => {
+    try {
+      const planId = req.params.id;
+
+      // Find the plan first to verify it exists
+      const plan = await ProductionPlan.findById(planId);
+
+      if (!plan) {
+        return res.status(404).json({ message: "Production plan not found" });
+      }
+
+      // Find all blocks associated with this plan
+      const blocks = await ProductionBlock.find({ planId })
+        .populate("machineId", "name")
+        .populate("employeeId", "name")
+        .populate("recipeId", "name")
+        .populate("planId", "name")
+        .sort({ day: 1, startTime: 1 });
+
+      res.json(blocks);
+    } catch (err) {
+      console.error("Error getting production plan blocks:", err);
+      res.status(500).json({ message: "Error getting production plan blocks" });
+    }
+  }
+);
+
 // SPECIALIZED PRODUCTION PLAN ENDPOINTS
 
 // Complete production plan

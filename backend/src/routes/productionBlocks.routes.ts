@@ -215,7 +215,8 @@ router.post("/", ensureAuth, async (req: AuthedRequest, res: Response) => {
       employeeId,
       start,
       end,
-      req.session.user!.id
+      req.session.user!.id,
+      day
     );
 
     if (conflictCheck.hasConflict) {
@@ -257,7 +258,7 @@ router.post("/", ensureAuth, async (req: AuthedRequest, res: Response) => {
       blockType,
       machineId,
       employeeId,
-      day, // Add the day field here
+      day,
       planId,
       notes: notes || "",
       status: "scheduled",
@@ -439,6 +440,7 @@ router.put("/:id", ensureAuth, async (req: AuthedRequest, res: Response) => {
         newStartTime,
         newEndTime,
         req.session.user!.id,
+        day,
         req.params.id // Exclude current block from conflict check
       );
 
@@ -814,12 +816,13 @@ router.post(
   ensureAuth,
   async (req: AuthedRequest, res: Response) => {
     try {
-      const { machineId, employeeId, startTime, endTime, blockId } = req.body;
+      const { machineId, employeeId, startTime, endTime, blockId, day } =
+        req.body;
 
-      if (!machineId || !employeeId || !startTime || !endTime) {
+      if (!machineId || !employeeId || !startTime || !endTime || !day) {
         return res.status(400).json({
           message:
-            "Machine ID, employee ID, start time, and end time are required",
+            "Machine ID, employee ID, start time, end time, and day are required",
         });
       }
 
@@ -829,6 +832,7 @@ router.post(
         new Date(startTime),
         new Date(endTime),
         req.session.user!.id,
+        day,
         blockId
       );
 
@@ -916,7 +920,8 @@ router.post(
         employeeId,
         prepStartTime,
         cleaningEndTime,
-        req.session.user!.id
+        req.session.user!.id,
+        day
       );
 
       if (!isAvailable) {
@@ -1029,6 +1034,7 @@ async function checkSchedulingConflicts(
   startTime: Date,
   endTime: Date,
   ownerId: string,
+  day: string,
   excludeBlockId?: string
 ) {
   const conflicts: any = {
@@ -1036,69 +1042,82 @@ async function checkSchedulingConflicts(
     employeeConflicts: [],
   };
 
+  console.log("Checking scheduling conflicts with params:", {
+    machineId,
+    employeeId,
+    startTime: startTime.toISOString(),
+    endTime: endTime.toISOString(),
+    day,
+    excludeBlockId,
+  });
+
   // Query for blocks that would conflict with this time range
+  // For blocks to conflict, they must:
+  // 1. Be on the same day
+  // 2. Have overlapping time ranges
   const query: any = {
     owner: ownerId,
     status: { $nin: ["completed", "cancelled"] },
-    $or: [
-      // Starts during another block
-      { startTime: { $lt: endTime }, endTime: { $gt: startTime } },
-    ],
+    day: day, // Must be on the same day
+    startTime: { $lt: endTime }, // Block starts before our end time
+    endTime: { $gt: startTime }, // Block ends after our start time
   };
 
   // Exclude the current block if we're updating
   if (excludeBlockId) {
-    (query as any)["_id"] = { $ne: excludeBlockId };
+    query._id = { $ne: excludeBlockId };
   }
 
-  // Check machine conflicts
+  console.log("Conflict query:", JSON.stringify(query));
+
+  // Query for blocks that would conflict with this time range
   const machineConflicts = await ProductionBlock.find({
     ...query,
     machineId,
-  })
-    .populate("machineId", "name")
-    .populate("planId", "name")
-    .exec();
+  }).populate("machineId employeeId recipeId");
 
+  // Add machine conflicts to the result
   if (machineConflicts.length > 0) {
-    conflicts.machineConflicts = machineConflicts.map((conflict) => ({
-      blockId: conflict._id,
-      startTime: conflict.startTime,
-      endTime: conflict.endTime,
-      machineName: conflict.machineId
-        ? (conflict.machineId as any).name
-        : "Unknown",
-      planName: conflict.planId ? (conflict.planId as any).name : "Unknown",
+    conflicts.hasConflict = true;
+    conflicts.machineConflicts = machineConflicts.map((block) => ({
+      _id: block._id,
+      startTime: block.startTime,
+      endTime: block.endTime,
+      day: block.day,
+      blockType: block.blockType,
+      machineId: block.machineId,
+      employeeId: block.employeeId,
+      recipeId: block.recipeId,
     }));
   }
 
-  // Check employee conflicts
+  // Query for blocks that would conflict with this time range
   const employeeConflicts = await ProductionBlock.find({
     ...query,
     employeeId,
-  })
-    .populate("employeeId", "name")
-    .populate("planId", "name")
-    .exec();
+  }).populate("machineId employeeId recipeId");
 
+  // Add employee conflicts to the result
   if (employeeConflicts.length > 0) {
-    conflicts.employeeConflicts = employeeConflicts.map((conflict) => ({
-      blockId: conflict._id,
-      startTime: conflict.startTime,
-      endTime: conflict.endTime,
-      employeeName: conflict.employeeId
-        ? (conflict.employeeId as any).name
-        : "Unknown",
-      planName: conflict.planId ? (conflict.planId as any).name : "Unknown",
+    conflicts.hasConflict = true;
+    conflicts.employeeConflicts = employeeConflicts.map((block) => ({
+      _id: block._id,
+      startTime: block.startTime,
+      endTime: block.endTime,
+      day: block.day,
+      blockType: block.blockType,
+      machineId: block.machineId,
+      employeeId: block.employeeId,
+      recipeId: block.recipeId,
     }));
   }
 
-  return {
-    hasConflict:
-      conflicts.machineConflicts.length > 0 ||
-      conflicts.employeeConflicts.length > 0,
-    conflicts,
-  };
+  // Set hasConflict flag based on whether any conflicts were found
+  conflicts.hasConflict =
+    conflicts.machineConflicts.length > 0 ||
+    conflicts.employeeConflicts.length > 0;
+
+  return conflicts;
 }
 
 // Update recipe in production plan

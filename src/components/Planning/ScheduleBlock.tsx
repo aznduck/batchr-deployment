@@ -30,15 +30,29 @@ export const ScheduleBlock: React.FC<ScheduleBlockProps> = ({
     return date.getHours() * 60 + date.getMinutes();
   };
 
-  const startTimeInMinutes = getTimeInMinutes(new Date(block.startTime));
-  const endTimeInMinutes = getTimeInMinutes(new Date(block.endTime));
+  // Create proper Date objects to ensure correct time parsing
+  const startDate = new Date(block.startTime);
+  const endDate = new Date(block.endTime);
+
+  const startTimeInMinutes = getTimeInMinutes(startDate);
+  const endTimeInMinutes = getTimeInMinutes(endDate);
   const durationInMinutes = endTimeInMinutes - startTimeInMinutes;
 
-  // Calculate position based on time
-  // Assuming the calendar starts at 8:00 AM (480 minutes from midnight)
-  const calendarStartMinutes = 8 * 60;
-  const topPosition = ((startTimeInMinutes - calendarStartMinutes) / 15) * 20; // 15 min slots, 20px high
-  const height = (durationInMinutes / 15) * 20;
+  // Calendar constants should match those in ScheduleCalendar.tsx
+  const calendarStartMinutes = 8 * 48; // 8:00 AM keep it like this it's correct
+  const calendarEndMinutes = 20 * 60; // 8:00 PM
+
+  // Ensure block is within calendar bounds
+  const boundedStartMinutes = Math.max(
+    startTimeInMinutes,
+    calendarStartMinutes
+  );
+  const boundedEndMinutes = Math.min(endTimeInMinutes, calendarEndMinutes);
+  const boundedDuration = boundedEndMinutes - boundedStartMinutes;
+
+  // Calculate position - 20px per 15-minute slot
+  const topPosition = ((boundedStartMinutes - calendarStartMinutes) / 15) * 20;
+  const height = Math.max((boundedDuration / 15) * 20, 20); // Minimum height of 20px
 
   // Determine color based on block type
   const getBlockStyles = () => {
@@ -110,59 +124,46 @@ export const ScheduleBlock: React.FC<ScheduleBlockProps> = ({
     );
   };
 
-  // Truncate description based on height
-  const getTruncatedLabel = () => {
-    const fullLabel = `${block.recipe?.name || "Unnamed"} - ${
-      block.machine?.name || "No machine"
-    }`;
-    if (height < 40) return block.recipe?.name || "Unnamed";
-    if (height < 60) return fullLabel;
-    return (
-      <>
-        <div className="font-medium">{block.recipe?.name || "Unnamed"}</div>
-        <div className="text-xs">
-          {block.machine?.name || "No machine"} ({block.blockType || "Default"})
-        </div>
-        <div className="text-xs mt-1">
-          {format(new Date(block.startTime), "h:mm a")} -{" "}
-          {format(new Date(block.endTime), "h:mm a")}
-        </div>
-      </>
-    );
-  };
-
   return (
     <TooltipProvider>
-      <Tooltip delayDuration={200}>
+      <Tooltip>
         <TooltipTrigger asChild>
           <div
             className={cn(
-              "absolute rounded border-l-2 p-1 shadow-sm cursor-pointer transition-all",
+              "m-1 p-2 rounded-md border text-xs shadow-sm",
               getBlockStyles(),
-              isHovered && "shadow-md scale-[1.02] z-10"
+              "hover:ring-2 hover:ring-primary transition-all cursor-pointer overflow-hidden"
             )}
             style={{
+              position: "absolute",
               top: `${topPosition}px`,
               height: `${height}px`,
-              left: "4px",
-              right: "4px",
-              zIndex: 10,
+              width: "calc(100% - 8px)",
+              zIndex: isHovered ? 20 : 10,
             }}
             onClick={onClick}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
           >
-            <div
-              className={cn(
-                "text-xs font-medium truncate",
-                height > 40 ? "leading-tight" : ""
-              )}
-            >
-              {getTruncatedLabel()}
+            <div className="font-medium truncate">
+              {block.recipe?.name
+                ? `${block.recipe.name} (${
+                    type.charAt(0).toUpperCase() + type.slice(1)
+                  })`
+                : `${type.charAt(0).toUpperCase() + type.slice(1)}`}
+            </div>
+            <div className="text-[10px] opacity-80 flex items-center gap-1 truncate">
+              <Clock className="h-3 w-3" />
+              <span>
+                {format(new Date(block.startTime), "h:mm a")} -{" "}
+                {format(new Date(block.endTime), "h:mm a")}
+              </span>
             </div>
           </div>
         </TooltipTrigger>
-        <TooltipContent>{getDetailedInfo()}</TooltipContent>
+        <TooltipContent side="right" className="max-w-xs">
+          {getDetailedInfo()}
+        </TooltipContent>
       </Tooltip>
     </TooltipProvider>
   );

@@ -74,6 +74,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import ScheduleBuilder from "@/components/Planning/ScheduleBuilder";
 import AddProductionPlanDialog from "@/components/Planning/AddProductionPlanDialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 // Custom loading spinner component with reliable animation
 const LoadingSpinner = () => (
@@ -140,7 +148,10 @@ const ProductionPlansList = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<ProductionPlan | null>(null);
   const [isEditPlanDialogOpen, setIsEditPlanDialogOpen] = useState(false);
+  const [isViewPlanDialogOpen, setIsViewPlanDialogOpen] = useState(false);
   const [isAddBlockDialogOpen, setIsAddBlockDialogOpen] = useState(false);
+  const [planBlocks, setPlanBlocks] = useState<any[]>([]);
+  const [isLoadingBlocks, setIsLoadingBlocks] = useState(false);
 
   // Fetch production plans from API
   const fetchPlans = async () => {
@@ -155,6 +166,18 @@ const ProductionPlansList = () => {
       toast.error("Failed to load production plans");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchPlanBlocks = async (planId: string) => {
+    setIsLoadingBlocks(true);
+    try {
+      const fetchedBlocks = await productionPlansApi.getBlocks(planId);
+      setPlanBlocks(fetchedBlocks as any[]);
+    } catch (err) {
+      console.error("Error fetching plan blocks:", err);
+    } finally {
+      setIsLoadingBlocks(false);
     }
   };
 
@@ -259,7 +282,11 @@ const ProductionPlansList = () => {
                   }}>
                     Edit
                   </Button>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" onClick={() => {
+                    setSelectedPlan(plan);
+                    fetchPlanBlocks(plan._id);
+                    setIsViewPlanDialogOpen(true);
+                  }}>
                     View
                   </Button>
                 </div>
@@ -331,6 +358,107 @@ const ProductionPlansList = () => {
                 Close
               </Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+      
+      {/* View Plan Dialog */}
+      {selectedPlan && (
+        <Dialog open={isViewPlanDialogOpen} onOpenChange={setIsViewPlanDialogOpen}>
+          <DialogContent className="sm:max-w-[800px]">
+            <DialogHeader>
+              <DialogTitle>Plan: {selectedPlan.name}</DialogTitle>
+              <DialogDescription>
+                Production plan details and associated blocks.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="py-4">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-sm font-medium">Plan Details</h3>
+                <div className="text-sm text-muted-foreground">
+                  Week of {new Date(selectedPlan.weekStartDate).toLocaleDateString()}
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-3 gap-4 mb-6">
+                <div className="border rounded-md p-3">
+                  <div className="text-xs text-muted-foreground">Status</div>
+                  <div className="font-medium">{selectedPlan.status}</div>
+                </div>
+                <div className="border rounded-md p-3">
+                  <div className="text-xs text-muted-foreground">Completion</div>
+                  <div className="font-medium">{selectedPlan.completionStatus || 0}%</div>
+                </div>
+                <div className="border rounded-md p-3">
+                  <div className="text-xs text-muted-foreground">Recipes</div>
+                  <div className="font-medium">{selectedPlan.recipes?.length || 0}</div>
+                </div>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-sm font-medium">Production Blocks</h3>
+                </div>
+                
+                {isLoadingBlocks ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : planBlocks.length === 0 ? (
+                  <div className="text-center py-8 border rounded-md border-dashed p-6">
+                    <Layers className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-muted-foreground">No blocks in this plan</p>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Use the Edit button to add blocks to this plan
+                    </p>
+                  </div>
+                ) : (
+                  <div className="border rounded-md overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Block Type</TableHead>
+                          <TableHead>Day</TableHead>
+                          <TableHead>Time</TableHead>
+                          <TableHead>Machine</TableHead>
+                          <TableHead>Employee</TableHead>
+                          <TableHead>Recipe</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {planBlocks.map((block) => (
+                          <TableRow key={block._id}>
+                            <TableCell className="font-medium capitalize">{block.blockType}</TableCell>
+                            <TableCell>{block.day}</TableCell>
+                            <TableCell>
+                              {new Date(block.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - 
+                              {new Date(block.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </TableCell>
+                            <TableCell>{block.machineId?.name || 'N/A'}</TableCell>
+                            <TableCell>{block.employeeId?.name || 'N/A'}</TableCell>
+                            <TableCell>{block.recipeId?.name || 'N/A'}</TableCell>
+                            <TableCell>
+                              <Badge 
+                                className={cn(
+                                  "capitalize",
+                                  block.status === "completed" ? "bg-green-100 text-green-800" : 
+                                  block.status === "in-progress" ? "bg-blue-100 text-blue-800" : 
+                                  "bg-slate-100"
+                                )}
+                              >
+                                {block.status}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
       )}

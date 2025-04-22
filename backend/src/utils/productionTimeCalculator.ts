@@ -71,6 +71,7 @@ export const calculateEndTime = (startTime: Date, minutes: number): Date => {
  * @param startTime Proposed start time
  * @param endTime Proposed end time
  * @param ownerId Owner ID
+ * @param day Day of the week
  * @param excludeBlockId Optional block ID to exclude from check (for updates)
  * @returns Boolean indicating if the time slot is available
  */
@@ -80,12 +81,14 @@ export const isTimeSlotAvailable = async (
   startTime: Date,
   endTime: Date,
   ownerId: string,
+  day: string,
   excludeBlockId?: string
 ): Promise<boolean> => {
   // Query for blocks that would conflict with this time range
   const query: any = {
     owner: ownerId,
     status: { $nin: ["completed", "cancelled"] },
+    day,
     $or: [
       // Overlapping time ranges
       { startTime: { $lt: endTime }, endTime: { $gt: startTime } },
@@ -165,7 +168,8 @@ export const suggestProductionSchedule = async (
       employeeId,
       prepStartTime,
       prepEndTime,
-      ownerId
+      ownerId,
+      preferredStartTime.toLocaleString("en-US", { weekday: "long" })
     );
 
     const productionAvailable = await isTimeSlotAvailable(
@@ -173,7 +177,8 @@ export const suggestProductionSchedule = async (
       employeeId,
       productionStartTime,
       productionEndTime,
-      ownerId
+      ownerId,
+      productionStartTime.toLocaleString("en-US", { weekday: "long" })
     );
 
     const cleaningAvailable = await isTimeSlotAvailable(
@@ -181,7 +186,8 @@ export const suggestProductionSchedule = async (
       employeeId,
       cleaningStartTime,
       cleaningEndTime,
-      ownerId
+      ownerId,
+      cleaningStartTime.toLocaleString("en-US", { weekday: "long" })
     );
 
     if (!prepAvailable || !productionAvailable || !cleaningAvailable) {

@@ -25,6 +25,9 @@ export const ScheduleBlock: React.FC<ScheduleBlockProps> = ({
 }) => {
   const [isHovered, setIsHovered] = useState(false);
 
+  // Debug: Log machine info
+  console.log("Block machine data:", block.machine, "Machine ID data:", block.machineId, "Block ID:", block._id);
+
   // Calculate position and height based on start/end times
   const getTimeInMinutes = (date: Date) => {
     return date.getHours() * 60 + date.getMinutes();
@@ -68,6 +71,9 @@ export const ScheduleBlock: React.FC<ScheduleBlockProps> = ({
     }
   };
 
+  // Get machine info from either the machine property or machineId (from API)
+  const machineInfo = block.machine || block.machineId;
+
   // Enhanced detailed information for the tooltip
   const getDetailedInfo = () => {
     return (
@@ -84,13 +90,13 @@ export const ScheduleBlock: React.FC<ScheduleBlockProps> = ({
           </span>
         </div>
 
-        {block.machine && (
+        {machineInfo && (
           <div className="text-xs flex items-center gap-1">
             <Settings className="h-3 w-3" />
-            <span>{block.machine.name}</span>
-            {block.machine.status && (
+            <span>{machineInfo.name}</span>
+            {machineInfo.status && (
               <span className="px-1 py-0.5 rounded-full text-[10px] bg-muted">
-                {block.machine.status}
+                {machineInfo.status}
               </span>
             )}
           </div>
@@ -130,7 +136,7 @@ export const ScheduleBlock: React.FC<ScheduleBlockProps> = ({
         <TooltipTrigger asChild>
           <div
             className={cn(
-              "m-1 p-2 rounded-md border text-xs shadow-sm",
+              "m-1 px-2 py-1 rounded-md border text-xs shadow-sm",
               getBlockStyles(),
               "hover:ring-2 hover:ring-primary transition-all cursor-pointer overflow-hidden"
             )}
@@ -158,6 +164,24 @@ export const ScheduleBlock: React.FC<ScheduleBlockProps> = ({
                 {format(new Date(block.startTime), "h:mm a")} -{" "}
                 {format(new Date(block.endTime), "h:mm a")}
               </span>
+            </div>
+            <div className="flex items-center gap-1 truncate">
+              {machineInfo ? (
+                <div className="text-[10px] opacity-80 flex items-center gap-1 truncate">
+                  <Settings className="h-3 w-3" />
+                  <span>{machineInfo.name || 'Machine Name Missing'}</span>
+                  {machineInfo.status && (
+                    <span className="px-1 py-0.5 rounded-full text-[10px] bg-muted">
+                      {machineInfo.status}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <div className="text-[10px] opacity-80 flex items-center gap-1 truncate">
+                  <Settings className="h-3 w-3" />
+                  <span className="italic">No machine assigned</span>
+                </div>
+              )}
             </div>
           </div>
         </TooltipTrigger>

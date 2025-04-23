@@ -113,15 +113,14 @@ export default function Ordering() {
 
   // Add item to cart
   const addToCart = (ingredient: Ingredient) => {
-    // Find the preferred supplier for this ingredient
-    const supplier = suppliers.find((s) => s.preferred);
+    // Find the actual supplier for this ingredient
+    const supplier = userSuppliers.find((s) => ingredient.supplierId === s._id);
     const orderItem: OrderItem = {
       ingredientId: ingredient._id,
       ingredient: ingredient,
       quantity: Math.max(ingredient.threshold - ingredient.stock, 0),
       unit: ingredient.unit,
       supplier: supplier,
-      minimumOrderQuantity: ingredient.minimumOrderQuantity,
     };
     setCartItems([...cartItems, orderItem]);
   };
@@ -148,7 +147,7 @@ export default function Ordering() {
       ...item,
       quantity: Math.max(
         item.ingredient.threshold - item.ingredient.stock,
-        item.minimumOrderQuantity || 0
+        0
       ),
     }));
     setCartItems(updatedItems);
@@ -157,90 +156,76 @@ export default function Ordering() {
   // Validate order
   const validateOrder = (): boolean => {
     const errors: { [key: string]: string } = {};
-    const supplierTotals: {
-      [key: string]: { quantity: number; value: number };
-    } = {};
-
-    // Calculate totals by supplier
-    cartItems.forEach((item) => {
-      if (item.supplier) {
-        const supplierId = item.supplier._id;
-        if (!supplierTotals[supplierId]) {
-          supplierTotals[supplierId] = { quantity: 0, value: 0 };
-        }
-        supplierTotals[supplierId].quantity += item.quantity;
-        // TODO: Add price calculation when available
-        // supplierTotals[supplierId].value += item.quantity * item.price;
-      }
-
-      // Check individual item minimum order quantity
-      if (
-        item.minimumOrderQuantity &&
-        item.quantity < item.minimumOrderQuantity
-      ) {
-        errors[
-          item.ingredientId
-        ] = `Minimum order quantity is ${item.minimumOrderQuantity} ${item.unit}`;
-      }
-    });
-
-    // Check supplier minimum requirements
-    Object.entries(supplierTotals).forEach(([supplierId, totals]) => {
-      const supplier = suppliers.find((s) => s._id === supplierId);
-      if (supplier?.minimumOrderRequirements) {
-        const { quantity, value, unit } = supplier.minimumOrderRequirements;
-
-        if (quantity && totals.quantity < quantity) {
-          errors[`supplier_${supplierId}`] = `Minimum order quantity for ${
-            supplier.name
-          } is ${quantity} ${unit || "units"}`;
-        }
-
-        if (value && totals.value < value) {
-          errors[
-            `supplier_${supplierId}`
-          ] = `Minimum order value for ${supplier.name} is $${value}`;
-        }
-      }
-    });
 
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
   // Submit order
-  const submitOrder = () => {
+  const submitOrder = async () => {
+    // Validate order
     if (!validateOrder()) {
+      toast.error("Please fix the errors before submitting");
       return;
     }
 
-    // Group items by supplier
-    const ordersBySupplier = Object.entries(itemsBySupplier).map(
-      ([supplierId, items]) => {
-        const supplier = items[0]?.supplier;
-        const order: Order = {
-          id: Math.random().toString(36).substr(2, 9),
-          supplierId: supplier?._id || "unassigned",
-          supplier: supplier,
-          items: items.map((item) => ({
-            ingredientId: item.ingredientId,
-            ingredient: item.ingredient,
-            quantity: item.quantity,
-            unit: item.unit,
-            supplier: item.supplier,
-            minimumOrderQuantity: item.minimumOrderQuantity,
-          })),
-          status: "pending",
-          orderDate: new Date().toISOString(),
-        };
-        return order;
-      }
-    );
+    try {
+      // Create a unique order ID
+      const orderId = Math.random().toString(36).substring(2, 15);
 
-    // TODO: Submit orders to backend
-    console.log("Submitting orders:", ordersBySupplier);
-    setCartItems([]);
-    setValidationErrors({});
+      // Update ingredient stock levels first
+      const stockUpdatePromises = cartItems.map(async (item) => {
+        const updatedStock = item.ingredient.stock + item.quantity;
+        try {
+          await ingredientsApi.update(item.ingredientId, {
+            ...item.ingredient,
+            stock: updatedStock
+          });
+          return { success: true, ingredientId: item.ingredientId };
+        } catch (error) {
+          console.error(`Failed to update stock for ${item.ingredient.name}:`, error);
+          return { success: false, ingredientId: item.ingredientId, error };
+        }
+      });
+
+      const stockUpdateResults = await Promise.all(stockUpdatePromises);
+      const failedUpdates = stockUpdateResults.filter(result => !result.success);
+      
+      if (failedUpdates.length > 0) {
+        toast.error(`Failed to update stock for ${failedUpdates.length} ingredients.`);
+      }
+
+      // Create order record
+      const newOrder: Order = {
+        id: orderId,
+        supplierId: "multiple", // Using "multiple" since we may have items from different suppliers
+        supplier: undefined, // Can be left undefined since we're tracking suppliers at the item level
+        items: cartItems.map((item) => ({
+          ingredientId: item.ingredientId,
+          ingredient: item.ingredient,
+          quantity: item.quantity,
+          unit: item.unit,
+          supplier: item.supplier,
+        })),
+        status: "pending",
+        orderDate: new Date().toISOString(),
+      };
+
+      // Here you would typically send to backend
+      // For now we'll just show a success message
+      toast.success("Order submitted successfully");
+
+      // Clear the cart
+      setCartItems([]);
+
+      // Refresh ingredients to show updated stock
+      const refreshedIngredients = await ingredientsApi.getAll();
+      setUserIngredients(refreshedIngredients);
+      
+    } catch (error) {
+      console.error("Failed to submit order:", error);
+      toast.error("Failed to submit order");
+    }
   };
 
   const handleAddSupplier = async (e: React.FormEvent) => {
@@ -414,26 +399,6 @@ export default function Ordering() {
                         <h3 className="font-semibold">
                           {items[0]?.supplier?.name || "Unassigned Supplier"}
                         </h3>
-                        {items[0]?.supplier?.minimumOrderRequirements && (
-                          <div className="text-sm text-muted-foreground">
-                            Minimum Order:{" "}
-                            {
-                              items[0].supplier.minimumOrderRequirements
-                                .quantity
-                            }{" "}
-                            {items[0].supplier.minimumOrderRequirements.unit}
-                            {items[0].supplier.minimumOrderRequirements.value &&
-                              ` or $${items[0].supplier.minimumOrderRequirements.value}`}
-                          </div>
-                        )}
-                        {validationErrors[`supplier_${supplierId}`] && (
-                          <Alert variant="destructive">
-                            <AlertCircle className="h-4 w-4" />
-                            <AlertDescription>
-                              {validationErrors[`supplier_${supplierId}`]}
-                            </AlertDescription>
-                          </Alert>
-                        )}
                         {items.map((item) => (
                           <div
                             key={item.ingredientId}
@@ -461,11 +426,6 @@ export default function Ordering() {
                                 }
                                 min={0}
                               />
-                              {item.minimumOrderQuantity && (
-                                <div className="text-sm text-muted-foreground">
-                                  Min: {item.minimumOrderQuantity} {item.unit}
-                                </div>
-                              )}
                             </div>
                             <div className="col-span-1">
                               {validationErrors[item.ingredientId] && (

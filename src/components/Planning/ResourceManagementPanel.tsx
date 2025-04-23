@@ -30,6 +30,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, RefreshCw, Settings, User } from "lucide-react";
 import { Trash2, CheckCircle2, Layers, AlertCircle } from "lucide-react";
 import { AddEmployeeDialog } from "./AddEmployeeDialog";
+import { EditEmployeeDialog } from "./EditEmployeeDialog";
 import {
   Accordion,
   AccordionContent,
@@ -49,6 +50,8 @@ export const ResourceManagementPanel: React.FC<
   const [activeTab, setActiveTab] = useState<string>("machines");
   const [isAddingMachine, setIsAddingMachine] = useState(false);
   const [isAddingEmployee, setIsAddingEmployee] = useState(false);
+  const [isEditingEmployee, setIsEditingEmployee] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [machines, setMachines] = useState<Machine[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoading, setIsLoading] = useState({
@@ -165,6 +168,15 @@ export const ResourceManagementPanel: React.FC<
 
   const handleEmployeeAdded = (newEmployee: Employee) => {
     setEmployees((prev) => [...prev, newEmployee]);
+  };
+
+  const handleEmployeeUpdated = (updatedEmployee: Employee) => {
+    setEmployees((prev) =>
+      prev.map((emp) =>
+        emp._id === updatedEmployee._id ? updatedEmployee : emp
+      )
+    );
+    toast.success(`Employee ${updatedEmployee.name} updated successfully`);
   };
 
   const handleDeleteMachine = async (machineId: string) => {
@@ -380,126 +392,141 @@ export const ResourceManagementPanel: React.FC<
                     No employees found. Add your first employee!
                   </div>
                 ) : (
-                  <Accordion type="multiple" className="w-full">
+                  <div className="space-y-2">
                     {employees.map((employee) => (
-                      <AccordionItem
-                        value={employee._id}
+                      <Card
                         key={employee._id}
-                        className="border-b"
+                        className={cn(
+                          "p-3 shadow-sm hover:shadow border-2 border-border/40",
+                          !employee.active && "opacity-60"
+                        )}
                       >
-                        <AccordionTrigger className="py-4">
-                          <div className="flex items-center justify-between w-full px-2">
-                            {/* Left: Employee Info */}
-                            <div className="flex items-center">
-                              <User className="h-4 w-4 mr-2 text-muted-foreground" />
-                              <span
-                                className={cn(
-                                  "text-sm",
-                                  !employee.active &&
-                                    "text-muted-foreground line-through"
-                                )}
-                              >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className={cn(
+                              "w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary-foreground font-medium",
+                              employee.active ? "bg-primary/20" : "bg-muted"
+                            )}>
+                              {employee.name
+                                .split(" ")
+                                .map((n) => n[0])
+                                .join("")
+                                .toUpperCase()
+                                .substring(0, 2)}
+                            </div>
+                            <div>
+                              <div className="font-medium text-sm">
                                 {employee.name}
-                              </span>
-                            </div>
-
-                            {/* Right: Role Badge + Delete Button */}
-                            <div className="flex items-center gap-3">
-                              <Badge variant="outline">{employee.role}</Badge>
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>
-                                      Delete Employee
-                                    </AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      Are you sure you want to delete{" "}
-                                      <strong>{employee.name}</strong>? This
-                                      action cannot be undone.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>
-                                      Cancel
-                                    </AlertDialogCancel>
-                                    <AlertDialogAction
-                                      onClick={() =>
-                                        handleDeleteEmployee(employee._id)
-                                      }
-                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                    >
-                                      Delete
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
+                              </div>
+                              <div className="text-xs text-muted-foreground italic">
+                                {employee.role}
+                              </div>
                             </div>
                           </div>
-                        </AccordionTrigger>
 
-                        <AccordionContent className="py-3">
-                          <div className="pl-6 pb-2 text-xs space-y-2">
-                            <div className="text-muted-foreground">
-                              {employee.email}
-                            </div>
-
-                            <div>
-                              <h4 className="font-medium mb-1">Shifts</h4>
-                              {employee.shifts.length > 0 ? (
-                                employee.shifts.map((shift, idx) => (
-                                  <div
-                                    key={idx}
-                                    className="flex justify-between"
+                          <div className="flex items-center">
+                            <div className="relative">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 rounded-full"
+                                onClick={() => {
+                                  const button = document.getElementById(`employee-menu-${employee._id}`);
+                                  if (button) {
+                                    const isExpanded = button.getAttribute('aria-expanded') === 'true';
+                                    button.setAttribute('aria-expanded', isExpanded ? 'false' : 'true');
+                                    const menu = document.getElementById(`employee-dropdown-${employee._id}`);
+                                    if (menu) {
+                                      menu.style.display = isExpanded ? 'none' : 'block';
+                                    }
+                                  }
+                                }}
+                                id={`employee-menu-${employee._id}`}
+                                aria-expanded="false"
+                                aria-haspopup="true"
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  width="16"
+                                  height="16"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  className="lucide lucide-more-vertical"
+                                >
+                                  <circle cx="12" cy="12" r="1" />
+                                  <circle cx="12" cy="5" r="1" />
+                                  <circle cx="12" cy="19" r="1" />
+                                </svg>
+                              </Button>
+                              
+                              <div 
+                                id={`employee-dropdown-${employee._id}`}
+                                className="absolute right-0 mt-1 w-32 z-10 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 hidden"
+                              >
+                                <div className="py-1" role="menu" aria-orientation="vertical">
+                                  <button
+                                    className="text-left w-full block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                    role="menuitem"
+                                    onClick={() => {
+                                      // Close the dropdown
+                                      const menu = document.getElementById(`employee-dropdown-${employee._id}`);
+                                      if (menu) menu.style.display = 'none';
+                                      
+                                      // Open the edit dialog
+                                      setSelectedEmployee(employee);
+                                      setIsEditingEmployee(true);
+                                    }}
                                   >
-                                    <span>{shift.day}</span>
-                                    <span>
-                                      {shift.startTime} - {shift.endTime}
-                                    </span>
-                                  </div>
-                                ))
-                              ) : (
-                                <div className="text-muted-foreground">
-                                  No shifts
+                                    Edit
+                                  </button>
+                                  
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <button
+                                        className="text-left w-full block px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                                        role="menuitem"
+                                        onClick={() => {
+                                          // Close the dropdown
+                                          const menu = document.getElementById(`employee-dropdown-${employee._id}`);
+                                          if (menu) menu.style.display = 'none';
+                                        }}
+                                      >
+                                        Delete
+                                      </button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>
+                                          Delete Employee
+                                        </AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          Are you sure you want to delete {employee.name}?
+                                          This action cannot be undone.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction
+                                          onClick={() => handleDeleteEmployee(employee._id)}
+                                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                        >
+                                          Delete
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
                                 </div>
-                              )}
-                            </div>
-
-                            <div>
-                              <h4 className="font-medium mb-1">
-                                Machine Certifications
-                              </h4>
-                              {employee.machineCertifications.length > 0 ? (
-                                <div className="space-y-1">
-                                  {employee.machineCertifications.map(
-                                    (cert, idx) => (
-                                      <div key={idx}>
-                                        {machines.find(
-                                          (m) => m._id === cert.machineId
-                                        )?.name || "Unknown Machine"}
-                                      </div>
-                                    )
-                                  )}
-                                </div>
-                              ) : (
-                                <div className="text-muted-foreground">
-                                  No certifications
-                                </div>
-                              )}
+                              </div>
                             </div>
                           </div>
-                        </AccordionContent>
-                      </AccordionItem>
+                        </div>
+                      </Card>
                     ))}
-                  </Accordion>
+                  </div>
                 )}
 
                 <Button
@@ -512,11 +539,17 @@ export const ResourceManagementPanel: React.FC<
                   <span>Add Employee</span>
                 </Button>
 
-                {/* Add Employee Dialog */}
                 <AddEmployeeDialog
                   open={isAddingEmployee}
                   onOpenChange={setIsAddingEmployee}
                   onEmployeeAdded={handleEmployeeAdded}
+                />
+
+                <EditEmployeeDialog
+                  open={isEditingEmployee}
+                  onOpenChange={setIsEditingEmployee}
+                  employee={selectedEmployee}
+                  onEmployeeUpdated={handleEmployeeUpdated}
                 />
               </div>
             </ScrollArea>

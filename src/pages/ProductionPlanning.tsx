@@ -35,7 +35,13 @@ import ScheduleBlock from "@/components/Planning/ScheduleBlock";
 import { cn } from "@/lib/utils";
 import { Recipe } from "@/lib/data";
 import { Machine, MachineStatus } from "@/lib/machine";
-import { employeesApi, machinesApi, recipesApi, productionPlansApi } from "@/lib/api";
+import {
+  employeesApi,
+  machinesApi,
+  recipesApi,
+  productionPlansApi,
+  productionBlocksApi,
+} from "@/lib/api";
 import {
   Dialog,
   DialogClose,
@@ -181,6 +187,24 @@ const ProductionPlansList = () => {
     }
   };
 
+  // Handle deleting a production block
+  const handleDeleteBlock = async (blockId: string) => {
+    try {
+      await productionBlocksApi.delete(blockId);
+
+      // Update the local state to remove the deleted block
+      setPlanBlocks(planBlocks.filter((block) => block._id !== blockId));
+
+      // Refresh the plans to update the blocks count
+      fetchPlans();
+
+      toast.success("Block deleted successfully");
+    } catch (err) {
+      console.error("Error deleting block:", err);
+      toast.error("Failed to delete block");
+    }
+  };
+
   // Fetch plans on component mount
   useEffect(() => {
     fetchPlans();
@@ -222,8 +246,15 @@ const ProductionPlansList = () => {
       <div className="flex justify-between items-center">
         <h3 className="font-medium">Production Plans</h3>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={fetchPlans} disabled={isLoading}>
-            <RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchPlans}
+            disabled={isLoading}
+          >
+            <RefreshCw
+              className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")}
+            />
             Refresh
           </Button>
           <Button variant="outline" size="sm">
@@ -242,7 +273,12 @@ const ProductionPlansList = () => {
           <div className="text-center py-8 text-muted-foreground">
             <AlertCircle className="h-8 w-8 mx-auto mb-2" />
             <p>{error}</p>
-            <Button variant="outline" size="sm" className="mt-2" onClick={fetchPlans}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-2"
+              onClick={fetchPlans}
+            >
               Try Again
             </Button>
           </div>
@@ -274,19 +310,30 @@ const ProductionPlansList = () => {
                     <div className="text-sm font-medium">
                       {plan.completionStatus || 0}%
                     </div>
-                    <div className="text-xs text-muted-foreground">Complete</div>
+                    <div className="text-xs text-muted-foreground">
+                      Complete
+                    </div>
                   </div>
-                  <Button variant="outline" size="sm" onClick={() => {
-                    setSelectedPlan(plan);
-                    setIsEditPlanDialogOpen(true);
-                  }}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedPlan(plan);
+                      fetchPlanBlocks(plan._id);
+                      setIsEditPlanDialogOpen(true);
+                    }}
+                  >
                     Edit
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => {
-                    setSelectedPlan(plan);
-                    fetchPlanBlocks(plan._id);
-                    setIsViewPlanDialogOpen(true);
-                  }}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedPlan(plan);
+                      fetchPlanBlocks(plan._id);
+                      setIsViewPlanDialogOpen(true);
+                    }}
+                  >
                     View
                   </Button>
                 </div>
@@ -295,31 +342,56 @@ const ProductionPlansList = () => {
           ))
         )}
       </div>
-      
+
       {/* Edit Plan Dialog */}
       {selectedPlan && (
-        <Dialog open={isEditPlanDialogOpen} onOpenChange={setIsEditPlanDialogOpen}>
-          <DialogContent className="sm:max-w-[600px]">
+        <Dialog
+          open={isEditPlanDialogOpen}
+          onOpenChange={setIsEditPlanDialogOpen}
+        >
+          <DialogContent className="sm:max-w-[800px]">
             <DialogHeader>
               <DialogTitle>Edit Plan: {selectedPlan.name}</DialogTitle>
               <DialogDescription>
-                Edit plan details or add production blocks to this plan.
+                Edit plan details or manage production blocks in this plan.
               </DialogDescription>
             </DialogHeader>
-            
+
             <div className="py-4">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-sm font-medium">Plan Details</h3>
                 <div className="text-sm text-muted-foreground">
-                  Week of {new Date(selectedPlan.weekStartDate).toLocaleDateString()}
+                  Week of{" "}
+                  {new Date(selectedPlan.weekStartDate).toLocaleDateString()}
                 </div>
               </div>
-              
+
+              <div className="grid grid-cols-3 gap-4 mb-6">
+                <div className="border rounded-md p-3">
+                  <div className="text-xs text-muted-foreground">Status</div>
+                  <div className="font-medium">{selectedPlan.status}</div>
+                </div>
+                <div className="border rounded-md p-3">
+                  <div className="text-xs text-muted-foreground">
+                    Completion
+                  </div>
+                  <div className="font-medium">
+                    {selectedPlan.completionStatus || 0}%
+                  </div>
+                </div>
+                <div className="border rounded-md p-3">
+                  <div className="text-xs text-muted-foreground">Recipes</div>
+                  <div className="font-medium">
+                    {selectedPlan.recipes?.length || 0}
+                  </div>
+                </div>
+              </div>
+
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <h3 className="text-sm font-medium">Production Blocks</h3>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     size="sm"
                     onClick={() => {
                       setIsAddBlockDialogOpen(true);
@@ -329,30 +401,127 @@ const ProductionPlansList = () => {
                     Add Block
                   </Button>
                 </div>
-                
-                <div className="border rounded-md p-4 min-h-[100px]">
-                  {selectedPlan.blocks && selectedPlan.blocks.length > 0 ? (
-                    <div className="space-y-2">
-                      <div className="text-sm">
-                        {selectedPlan.blocks.length} blocks in this plan
-                      </div>
-                      {/* We could list the blocks here, but that's a future enhancement */}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-[100px] text-center">
-                      <p className="text-muted-foreground">No blocks added yet</p>
-                      <p className="text-xs text-muted-foreground">
-                        Click "Add Block" to add production blocks to this plan
-                      </p>
-                    </div>
-                  )}
-                </div>
+
+                {isLoadingBlocks ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : planBlocks.length === 0 ? (
+                  <div className="text-center py-8 border rounded-md border-dashed p-6">
+                    <Layers className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-muted-foreground">
+                      No blocks in this plan
+                    </p>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Click "Add Block" to add production blocks to this plan
+                    </p>
+                  </div>
+                ) : (
+                  <div className="border rounded-md overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Block Type</TableHead>
+                          <TableHead>Day</TableHead>
+                          <TableHead>Time</TableHead>
+                          <TableHead>Machine</TableHead>
+                          <TableHead>Employee</TableHead>
+                          <TableHead>Recipe</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {planBlocks.map((block) => (
+                          <TableRow key={block._id}>
+                            <TableCell className="font-medium capitalize">
+                              {block.blockType}
+                            </TableCell>
+                            <TableCell>{block.day}</TableCell>
+                            <TableCell>
+                              {new Date(block.startTime).toLocaleTimeString(
+                                [],
+                                { hour: "2-digit", minute: "2-digit" }
+                              )}{" "}
+                              -
+                              {new Date(block.endTime).toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </TableCell>
+                            <TableCell>
+                              {block.machineId?.name || "N/A"}
+                            </TableCell>
+                            <TableCell>
+                              {block.employeeId?.name || "N/A"}
+                            </TableCell>
+                            <TableCell>
+                              {block.recipeId?.name || "N/A"}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                className={cn(
+                                  "capitalize",
+                                  block.status === "completed"
+                                    ? "bg-green-100 text-green-800"
+                                    : block.status === "in-progress"
+                                    ? "bg-blue-100 text-blue-800"
+                                    : "bg-slate-100"
+                                )}
+                              >
+                                {block.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>
+                                      Delete Production Block
+                                    </AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure you want to delete this{" "}
+                                      {block.blockType} block? This action
+                                      cannot be undone.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>
+                                      Cancel
+                                    </AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() =>
+                                        handleDeleteBlock(block._id)
+                                      }
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                      Delete
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
               </div>
             </div>
-            
+
             <DialogFooter>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => setIsEditPlanDialogOpen(false)}
               >
                 Close
@@ -361,10 +530,13 @@ const ProductionPlansList = () => {
           </DialogContent>
         </Dialog>
       )}
-      
+
       {/* View Plan Dialog */}
       {selectedPlan && (
-        <Dialog open={isViewPlanDialogOpen} onOpenChange={setIsViewPlanDialogOpen}>
+        <Dialog
+          open={isViewPlanDialogOpen}
+          onOpenChange={setIsViewPlanDialogOpen}
+        >
           <DialogContent className="sm:max-w-[800px]">
             <DialogHeader>
               <DialogTitle>Plan: {selectedPlan.name}</DialogTitle>
@@ -372,35 +544,42 @@ const ProductionPlansList = () => {
                 Production plan details and associated blocks.
               </DialogDescription>
             </DialogHeader>
-            
+
             <div className="py-4">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-sm font-medium">Plan Details</h3>
                 <div className="text-sm text-muted-foreground">
-                  Week of {new Date(selectedPlan.weekStartDate).toLocaleDateString()}
+                  Week of{" "}
+                  {new Date(selectedPlan.weekStartDate).toLocaleDateString()}
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-3 gap-4 mb-6">
                 <div className="border rounded-md p-3">
                   <div className="text-xs text-muted-foreground">Status</div>
                   <div className="font-medium">{selectedPlan.status}</div>
                 </div>
                 <div className="border rounded-md p-3">
-                  <div className="text-xs text-muted-foreground">Completion</div>
-                  <div className="font-medium">{selectedPlan.completionStatus || 0}%</div>
+                  <div className="text-xs text-muted-foreground">
+                    Completion
+                  </div>
+                  <div className="font-medium">
+                    {selectedPlan.completionStatus || 0}%
+                  </div>
                 </div>
                 <div className="border rounded-md p-3">
                   <div className="text-xs text-muted-foreground">Recipes</div>
-                  <div className="font-medium">{selectedPlan.recipes?.length || 0}</div>
+                  <div className="font-medium">
+                    {selectedPlan.recipes?.length || 0}
+                  </div>
                 </div>
               </div>
-              
+
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <h3 className="text-sm font-medium">Production Blocks</h3>
                 </div>
-                
+
                 {isLoadingBlocks ? (
                   <div className="flex justify-center py-8">
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -408,7 +587,9 @@ const ProductionPlansList = () => {
                 ) : planBlocks.length === 0 ? (
                   <div className="text-center py-8 border rounded-md border-dashed p-6">
                     <Layers className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                    <p className="text-muted-foreground">No blocks in this plan</p>
+                    <p className="text-muted-foreground">
+                      No blocks in this plan
+                    </p>
                     <p className="text-sm text-muted-foreground mb-4">
                       Use the Edit button to add blocks to this plan
                     </p>
@@ -430,22 +611,39 @@ const ProductionPlansList = () => {
                       <TableBody>
                         {planBlocks.map((block) => (
                           <TableRow key={block._id}>
-                            <TableCell className="font-medium capitalize">{block.blockType}</TableCell>
+                            <TableCell className="font-medium capitalize">
+                              {block.blockType}
+                            </TableCell>
                             <TableCell>{block.day}</TableCell>
                             <TableCell>
-                              {new Date(block.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - 
-                              {new Date(block.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              {new Date(block.startTime).toLocaleTimeString(
+                                [],
+                                { hour: "2-digit", minute: "2-digit" }
+                              )}{" "}
+                              -
+                              {new Date(block.endTime).toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
                             </TableCell>
-                            <TableCell>{block.machineId?.name || 'N/A'}</TableCell>
-                            <TableCell>{block.employeeId?.name || 'N/A'}</TableCell>
-                            <TableCell>{block.recipeId?.name || 'N/A'}</TableCell>
                             <TableCell>
-                              <Badge 
+                              {block.machineId?.name || "N/A"}
+                            </TableCell>
+                            <TableCell>
+                              {block.employeeId?.name || "N/A"}
+                            </TableCell>
+                            <TableCell>
+                              {block.recipeId?.name || "N/A"}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
                                 className={cn(
                                   "capitalize",
-                                  block.status === "completed" ? "bg-green-100 text-green-800" : 
-                                  block.status === "in-progress" ? "bg-blue-100 text-blue-800" : 
-                                  "bg-slate-100"
+                                  block.status === "completed"
+                                    ? "bg-green-100 text-green-800"
+                                    : block.status === "in-progress"
+                                    ? "bg-blue-100 text-blue-800"
+                                    : "bg-slate-100"
                                 )}
                               >
                                 {block.status}
@@ -462,7 +660,7 @@ const ProductionPlansList = () => {
           </DialogContent>
         </Dialog>
       )}
-      
+
       {/* Add Block Dialog */}
       {selectedPlan && (
         <ScheduleBuilder
@@ -598,7 +796,7 @@ const ProductionPlanning = () => {
           </TabsContent>
         </Tabs>
       </div>
-      
+
       {/* Add Production Plan Dialog */}
       <AddProductionPlanDialog
         isOpen={isAddPlanDialogOpen}

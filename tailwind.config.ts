@@ -19,7 +19,7 @@ export default {
 		},
 		extend: {
 			fontFamily: {
-				sans: ['Inter', 'sans-serif'],
+				sans: ['"SF Pro Display"', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
 				'sf-pro': ['"SF Pro Display"', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
 			},
 			colors: {

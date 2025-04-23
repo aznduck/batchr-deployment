@@ -146,9 +146,7 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
               size="sm"
               className={`text-xs p-1 h-6 text-${color}-foreground/70 hover:text-${color}-foreground hover:bg-${color}/60`}
               onClick={toggleFlip}
-            >
-              <History size={14} className="mr-1" /> Batch History
-            </Button>
+            ></Button>
           </CardFooter>
         </Card>
 

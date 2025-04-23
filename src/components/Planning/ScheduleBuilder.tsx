@@ -31,6 +31,7 @@ import {
   machinesApi,
   employeesApi,
   recipesApi,
+  productionPlansApi,
 } from "@/lib/api";
 
 interface ScheduleBuilderProps {
@@ -50,23 +51,33 @@ const ScheduleBuilder: React.FC<ScheduleBuilderProps> = ({
   onBlockDeleted,
   planId,
 }) => {
-  const [selectedBlock, setSelectedBlock] = useState<ProductionBlock>({
+  // Extended interface for the form state that includes additional UI properties
+  interface ExtendedProductionBlock extends ProductionBlock {
+    plan?: any; // Store the full plan object for UI purposes
+  }
+
+  // State for form data
+  const [selectedBlock, setSelectedBlock] = useState<ExtendedProductionBlock>({
     _id: "",
-    startTime: new Date(new Date().setHours(9, 0, 0, 0)), // Default 9 AM
-    endTime: new Date(new Date().setHours(10, 0, 0, 0)), // Default 10 AM
+    startTime: new Date().toISOString(),
+    endTime: new Date(new Date().getTime() + 60 * 60 * 1000).toISOString(),
     blockType: "production",
     day: "Monday",
     status: "scheduled",
     notes: "",
+    planId: "",
+    plan: null,
   });
   const [machines, setMachines] = useState<Machine[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [plans, setPlans] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState({
     blocks: false,
     machines: false,
     employees: false,
     recipes: false,
+    plans: false,
   });
 
   // Reset the selected block when dialog opens
@@ -74,12 +85,14 @@ const ScheduleBuilder: React.FC<ScheduleBuilderProps> = ({
     if (isOpen) {
       setSelectedBlock({
         _id: "",
-        startTime: new Date(new Date().setHours(9, 0, 0, 0)), // Default 9 AM
-        endTime: new Date(new Date().setHours(10, 0, 0, 0)), // Default 10 AM
+        startTime: new Date().toISOString(),
+        endTime: new Date(new Date().getTime() + 60 * 60 * 1000).toISOString(),
         blockType: "production",
         day: "Monday",
         status: "scheduled",
         notes: "",
+        planId: "",
+        plan: null,
       });
     }
   }, [isOpen]);
@@ -92,6 +105,7 @@ const ScheduleBuilder: React.FC<ScheduleBuilderProps> = ({
         machines: true,
         employees: true,
         recipes: true,
+        plans: true,
       }));
       try {
         // Fetch machines
@@ -105,6 +119,20 @@ const ScheduleBuilder: React.FC<ScheduleBuilderProps> = ({
         // Fetch recipes
         const fetchedRecipes = await recipesApi.getAll();
         setRecipes(fetchedRecipes as Recipe[]);
+
+        // Fetch production plans
+        const fetchedPlans = await productionPlansApi.getAll();
+        setPlans(fetchedPlans as any[]);
+
+        // If a planId is provided via props, pre-select that plan
+        if (planId) {
+          const selectedPlan = (fetchedPlans as any[]).find((p) => p._id === planId);
+          setSelectedBlock((prev) => ({
+            ...prev,
+            planId: planId,
+            plan: selectedPlan,
+          }));
+        }
       } catch (err) {
         console.error("Error fetching resources:", err);
         toast.error("Failed to load resources");
@@ -114,6 +142,7 @@ const ScheduleBuilder: React.FC<ScheduleBuilderProps> = ({
           machines: false,
           employees: false,
           recipes: false,
+          plans: false,
         }));
       }
     };
@@ -121,12 +150,19 @@ const ScheduleBuilder: React.FC<ScheduleBuilderProps> = ({
     if (isOpen) {
       fetchResources();
     }
-  }, [isOpen]);
+  }, [isOpen, planId]);
 
   const handleSaveBlock = async () => {
     setIsLoading((prev) => ({ ...prev, blocks: true }));
 
     try {
+      // Validate that a plan is selected
+      if (!selectedBlock.planId) {
+        toast.error("Please select a production plan");
+        setIsLoading((prev) => ({ ...prev, blocks: false }));
+        return;
+      }
+
       // Prepare the block data for API
       const blockData = {
         startTime: new Date(selectedBlock.startTime),
@@ -134,17 +170,12 @@ const ScheduleBuilder: React.FC<ScheduleBuilderProps> = ({
         blockType: selectedBlock.blockType,
         machineId: selectedBlock.machine?._id || "",
         employeeId: selectedBlock.assignedEmployee?._id || "",
-        // Ensure day is always set to a valid value
-        day: selectedBlock.day || "Monday", // Default to Monday if somehow not set
+        day: selectedBlock.day || "Monday",
         notes: selectedBlock.notes || "",
+        planId: selectedBlock.planId,
       };
 
       console.log("Sending block data with day:", blockData.day);
-
-      // Only add planId if one is provided in props and it's a valid ID
-      if (planId && planId.match(/^[0-9a-fA-F]{24}$/)) {
-        Object.assign(blockData, { planId });
-      }
 
       // For production blocks, add recipe and quantity
       if (selectedBlock.blockType === "production") {
@@ -169,6 +200,60 @@ const ScheduleBuilder: React.FC<ScheduleBuilderProps> = ({
           ...selectedBlock,
           _id: createdBlockResponse._id || selectedBlock._id,
         };
+
+        // If this is a production block, automatically create prep and cleaning blocks
+        if (selectedBlock.blockType === "production") {
+          try {
+            // Calculate the times for prep and cleaning blocks (15 minutes each)
+            const prodStartTime = new Date(selectedBlock.startTime);
+            const prodEndTime = new Date(selectedBlock.endTime);
+            
+            // Prep block (15 minutes before production)
+            const prepStartTime = new Date(prodStartTime);
+            prepStartTime.setMinutes(prepStartTime.getMinutes() - 15);
+            const prepEndTime = new Date(prodStartTime);
+            
+            // Cleaning block (15 minutes after production)
+            const cleaningStartTime = new Date(prodEndTime);
+            const cleaningEndTime = new Date(prodEndTime);
+            cleaningEndTime.setMinutes(cleaningEndTime.getMinutes() + 15);
+            
+            // Create prep block
+            const prepBlockData = {
+              startTime: prepStartTime,
+              endTime: prepEndTime,
+              blockType: "prep" as "prep" | "production" | "cleaning" | "maintenance",
+              machineId: selectedBlock.machine?._id || "",
+              employeeId: selectedBlock.assignedEmployee?._id || "",
+              day: selectedBlock.day,
+              notes: `Auto-created prep block for ${selectedBlock.recipe?.name || 'production'}`,
+              planId: selectedBlock.planId,
+            };
+            
+            // Create cleaning block
+            const cleaningBlockData = {
+              startTime: cleaningStartTime,
+              endTime: cleaningEndTime,
+              blockType: "cleaning" as "prep" | "production" | "cleaning" | "maintenance",
+              machineId: selectedBlock.machine?._id || "",
+              employeeId: selectedBlock.assignedEmployee?._id || "",
+              day: selectedBlock.day,
+              notes: `Auto-created cleaning block for ${selectedBlock.recipe?.name || 'production'}`,
+              planId: selectedBlock.planId,
+            };
+            
+            // Send requests to create the additional blocks
+            await Promise.all([
+              productionBlocksApi.create(prepBlockData),
+              productionBlocksApi.create(cleaningBlockData)
+            ]);
+            
+            console.log("Auto-created prep and cleaning blocks");
+          } catch (err) {
+            console.error("Error creating auxiliary blocks:", err);
+            toast.error("Main block created, but failed to create prep/cleaning blocks");
+          }
+        }
 
         // Notify parent component
         if (onBlockAdded) {
@@ -290,7 +375,7 @@ const ScheduleBuilder: React.FC<ScheduleBuilderProps> = ({
             <div className="grid w-full items-center gap-1.5">
               <Label htmlFor="day">Day</Label>
               <Select
-                value={selectedBlock.day || "Monday"} 
+                value={selectedBlock.day || "Monday"}
                 onValueChange={(day) =>
                   setSelectedBlock({ ...selectedBlock, day })
                 }
@@ -311,6 +396,63 @@ const ScheduleBuilder: React.FC<ScheduleBuilderProps> = ({
               </Select>
               {!selectedBlock.day && (
                 <p className="text-xs text-red-500 mt-1">Day is required</p>
+              )}
+            </div>
+
+            {/* Production Plan Selection */}
+            <div className="space-y-2">
+              <Label htmlFor="plan">Production Plan</Label>
+              {planId ? (
+                <div className="flex flex-col">
+                  <div className="border rounded-md px-3 py-2 bg-muted text-muted-foreground">
+                    <span className="text-sm">{selectedBlock.plan?.name || 'Selected Plan'}</span>
+                  </div>
+                  <span className="text-xs text-muted-foreground mt-1">
+                    Plan pre-selected from current context
+                  </span>
+                </div>
+              ) : (
+                <>
+                  <Select
+                    value={selectedBlock.planId}
+                    onValueChange={(value) => {
+                      const selectedPlan = plans.find((p) => p._id === value);
+                      setSelectedBlock((prev) => ({
+                        ...prev,
+                        planId: value,
+                        plan: selectedPlan,
+                      }));
+                    }}
+                    disabled={isLoading.plans}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select production plan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {isLoading.plans ? (
+                        <div className="flex items-center justify-center p-2">
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          <span>Loading plans...</span>
+                        </div>
+                      ) : plans.length === 0 ? (
+                        <div className="p-2 text-center text-sm text-muted-foreground">
+                          No production plans available
+                        </div>
+                      ) : (
+                        plans.map((plan) => (
+                          <SelectItem key={plan._id} value={plan._id}>
+                            {plan.name}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {!selectedBlock.planId && (
+                    <p className="text-xs text-red-500 mt-1">
+                      Production plan is required
+                    </p>
+                  )}
+                </>
               )}
             </div>
 

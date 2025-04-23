@@ -13,8 +13,19 @@ import {
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { CircularGauge } from "@/components/ui/CircularGauge";
-import { BarChart, Package, ShoppingCart, UtensilsCrossed } from "lucide-react";
+import {
+  BarChart,
+  BarChart3,
+  Clock,
+  ShoppingCart,
+  UtensilsCrossed,
+  Package,
+  Settings,
+  User,
+  AlertCircle,
+} from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import RecipeCarousel from "@/components/Dashboard/RecipeCarousel";
 import {
   ResponsiveContainer,
   BarChart as RechartsBarChart,
@@ -112,18 +123,12 @@ const Index = () => {
 
   return (
     <Layout>
-      <div className="space-y-8">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">
-            Overview of your production inventory.
-          </p>
-        </div>
-
-        <Stats />
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="md:col-span-2 hover-scale">
+      <div className="flex flex-col h-[calc(100vh-56px)] overflow-hidden">
+        <h1 className="text-xl font-semibold mb-4">Dashboard</h1>
+        
+        <div className="grid grid-cols-1 gap-6 flex-1 overflow-hidden">
+          {/* Production Overview Graph - Full Width */}
+          <Card className="hover-scale flex-shrink-0">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <BarChart size={18} className="text-primary" />
@@ -139,6 +144,18 @@ const Index = () => {
                       data={recipeProductionData}
                       margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                     >
+                      <defs>
+                        <linearGradient
+                          id="barGradient"
+                          x1="0"
+                          y1="0"
+                          x2="0"
+                          y2="1"
+                        >
+                          <stop offset="0%" stopColor="#DCADFF" />
+                          <stop offset="100%" stopColor="#A8AFFF" />
+                        </linearGradient>
+                      </defs>
                       <CartesianGrid
                         strokeDasharray="3 3"
                         vertical={false}
@@ -156,7 +173,7 @@ const Index = () => {
                       <Bar
                         dataKey="production"
                         name="Units Produced"
-                        fill="#3984A3"
+                        fill="url(#barGradient)"
                         radius={[4, 4, 0, 0]}
                       />
                     </RechartsBarChart>
@@ -170,124 +187,10 @@ const Index = () => {
             </CardContent>
           </Card>
 
-          <Card className="hover-scale">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Package size={18} className="text-orange-500" />
-                Low Stock Alert
-              </CardTitle>
-              <CardDescription>Items that need restocking soon</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {lowStockIngredients.length === 0 ? (
-                <div className="text-center py-6 text-muted-foreground">
-                  No ingredients below threshold
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {lowStockIngredients.map((ingredient) => (
-                    <div
-                      key={ingredient._id}
-                      className="flex items-center justify-between"
-                    >
-                      <div>
-                        <p className="font-medium">{ingredient.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {ingredient.stock} / {ingredient.threshold}{" "}
-                          {ingredient.unit}
-                        </p>
-                      </div>
-                      <CircularGauge
-                        value={ingredient.stock}
-                        maxValue={ingredient.threshold}
-                        size={60}
-                        thickness={6}
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div className="mt-4">
-                <Link to="/inventory">
-                  <Button variant="outline" className="w-full">
-                    View All Ingredients
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card className="hover-scale">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <UtensilsCrossed size={18} className="text-emerald-500" />
-                Recipe Management
-              </CardTitle>
-              <CardDescription>Quick access to recipes</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Link to="/recipes">
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                  {recipes.slice(0, 3).map((recipe) => (
-                    <div
-                      key={recipe._id}
-                      className="p-3 rounded-lg border bg-muted/50 hover:bg-muted transition-colors flex flex-col gap-1"
-                    >
-                      <p className="font-medium text-sm">{recipe.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {recipe.ingredients.length} ingredients
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </Link>
-              <Separator className="my-4" />
-              <Link to="/recipes">
-                <Button variant="outline" className="w-full">
-                  Manage Recipes
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-
-          <Card className="hover-scale">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <ShoppingCart size={18} className="text-blue-500" />
-                Ordering
-              </CardTitle>
-              <CardDescription>
-                Order ingredients from suppliers
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Recommended Orders</p>
-                  <div className="p-3 rounded-lg border bg-muted/50">
-                    <p className="font-medium text-sm">Weekly Order Bundle</p>
-                    <p className="text-xs text-muted-foreground mb-2">
-                      5 ingredients from preferred suppliers
-                    </p>
-                    <div className="flex justify-between items-center">
-                      <p className="text-sm font-semibold">$345.00</p>
-                      <Button variant="secondary" size="sm">
-                        View Details
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-                <Separator />
-                <Link to="/ordering">
-                  <Button variant="outline" className="w-full">
-                    Go to Ordering
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Recipe Card Carousel */}
+          <div className="flex-1 min-h-0 pb-4 overflow-hidden">
+            <RecipeCarousel />
+          </div>
         </div>
       </div>
     </Layout>

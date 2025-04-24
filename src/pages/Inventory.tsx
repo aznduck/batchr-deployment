@@ -176,8 +176,9 @@ const Inventory = () => {
 
   return (
     <Layout>
-      <style dangerouslySetInnerHTML={{
-        __html: `
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
           @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
@@ -185,18 +186,10 @@ const Inventory = () => {
           .spinner-border {
             animation: spin 1s linear infinite;
           }
-        `
-      }} />
+        `,
+        }}
+      />
       <div className="space-y-6">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold tracking-tight">
-            Ingredient Inventory
-          </h1>
-          <p className="text-muted-foreground">
-            Manage your ingredients and monitor stock levels.
-          </p>
-        </div>
-
         <div className="flex flex-col sm:flex-row gap-4 items-center">
           <div className="relative w-full sm:w-auto flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />

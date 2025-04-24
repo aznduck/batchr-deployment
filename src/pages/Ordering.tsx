@@ -145,10 +145,7 @@ export default function Ordering() {
   const bringAllToPar = () => {
     const updatedItems = cartItems.map((item) => ({
       ...item,
-      quantity: Math.max(
-        item.ingredient.threshold - item.ingredient.stock,
-        0
-      ),
+      quantity: Math.max(item.ingredient.threshold - item.ingredient.stock, 0),
     }));
     setCartItems(updatedItems);
   };
@@ -179,20 +176,27 @@ export default function Ordering() {
         try {
           await ingredientsApi.update(item.ingredientId, {
             ...item.ingredient,
-            stock: updatedStock
+            stock: updatedStock,
           });
           return { success: true, ingredientId: item.ingredientId };
         } catch (error) {
-          console.error(`Failed to update stock for ${item.ingredient.name}:`, error);
+          console.error(
+            `Failed to update stock for ${item.ingredient.name}:`,
+            error
+          );
           return { success: false, ingredientId: item.ingredientId, error };
         }
       });
 
       const stockUpdateResults = await Promise.all(stockUpdatePromises);
-      const failedUpdates = stockUpdateResults.filter(result => !result.success);
-      
+      const failedUpdates = stockUpdateResults.filter(
+        (result) => !result.success
+      );
+
       if (failedUpdates.length > 0) {
-        toast.error(`Failed to update stock for ${failedUpdates.length} ingredients.`);
+        toast.error(
+          `Failed to update stock for ${failedUpdates.length} ingredients.`
+        );
       }
 
       // Create order record
@@ -221,7 +225,6 @@ export default function Ordering() {
       // Refresh ingredients to show updated stock
       const refreshedIngredients = await ingredientsApi.getAll();
       setUserIngredients(refreshedIngredients);
-      
     } catch (error) {
       console.error("Failed to submit order:", error);
       toast.error("Failed to submit order");
@@ -316,18 +319,6 @@ export default function Ordering() {
   return (
     <Layout>
       <div className="container mx-auto py-6 space-y-6">
-        <div className="flex justify-between items-center">
-          <div className="space-y-1">
-            <h1 className="text-3xl font-bold">Ordering</h1>
-            <p className="text-muted-foreground">
-              Manage your ingredient orders and track low stock items
-            </p>
-          </div>
-          {cartItems.length > 0 && (
-            <Button onClick={bringAllToPar}>Bring All to PAR</Button>
-          )}
-        </div>
-
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Low Stock Items */}
           <Card>

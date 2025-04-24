@@ -141,8 +141,9 @@ const Recipes = () => {
   return (
     <Layout>
       {/* Add the spinner CSS */}
-      <style dangerouslySetInnerHTML={{
-        __html: `
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
           @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
@@ -150,25 +151,13 @@ const Recipes = () => {
           .spinner-border {
             animation: spin 1s linear infinite;
           }
-        `
-      }} />
-      
-      <div className="space-y-6">
-        <div className="flex justify-between items-start flex-wrap gap-4">
-          <div className="space-y-1">
-            <h1 className="text-3xl font-bold tracking-tight">Recipes</h1>
-            <p className="text-muted-foreground">
-              Manage your recipes and production records.
-            </p>
-          </div>
-          <Button onClick={() => setAddModalOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Recipe
-          </Button>
-        </div>
+        `,
+        }}
+      />
 
-        <div className="flex items-center">
-          <div className="relative flex-1 max-w-sm">
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div className="relative max-w-sm w-80">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
               placeholder="Search recipes..."
@@ -187,6 +176,10 @@ const Recipes = () => {
               </Button>
             )}
           </div>
+          <Button onClick={() => setAddModalOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Recipe
+          </Button>
         </div>
 
         <div className="space-y-4">

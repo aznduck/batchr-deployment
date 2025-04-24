@@ -349,15 +349,15 @@ const ProductionPlansList = () => {
           open={isEditPlanDialogOpen}
           onOpenChange={setIsEditPlanDialogOpen}
         >
-          <DialogContent className="sm:max-w-[800px]">
+          <DialogContent className="sm:max-w-[800px] max-h-[80vh] overflow-hidden flex flex-col">
             <DialogHeader>
-              <DialogTitle>Edit Plan: {selectedPlan.name}</DialogTitle>
+              <DialogTitle>{selectedPlan.name}</DialogTitle>
               <DialogDescription>
                 Edit plan details or manage production blocks in this plan.
               </DialogDescription>
             </DialogHeader>
 
-            <div className="py-4">
+            <div className="py-4 overflow-y-auto pr-2">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-sm font-medium">Plan Details</h3>
                 <div className="text-sm text-muted-foreground">
@@ -519,14 +519,7 @@ const ProductionPlansList = () => {
               </div>
             </div>
 
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setIsEditPlanDialogOpen(false)}
-              >
-                Close
-              </Button>
-            </DialogFooter>
+            <DialogFooter></DialogFooter>
           </DialogContent>
         </Dialog>
       )}
@@ -537,15 +530,15 @@ const ProductionPlansList = () => {
           open={isViewPlanDialogOpen}
           onOpenChange={setIsViewPlanDialogOpen}
         >
-          <DialogContent className="sm:max-w-[800px]">
+          <DialogContent className="sm:max-w-[800px] max-h-[80vh] overflow-hidden flex flex-col">
             <DialogHeader>
-              <DialogTitle>Plan: {selectedPlan.name}</DialogTitle>
+              <DialogTitle>{selectedPlan.name}</DialogTitle>
               <DialogDescription>
                 Production plan details and associated blocks.
               </DialogDescription>
             </DialogHeader>
 
-            <div className="py-4">
+            <div className="py-4 overflow-y-auto pr-2">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-sm font-medium">Plan Details</h3>
                 <div className="text-sm text-muted-foreground">
@@ -723,38 +716,29 @@ const ProductionPlanning = () => {
       />
 
       <div className="container mx-auto space-y-6 py-6">
-        <div className="flex justify-between items-start">
-          <div className="space-y-1">
-            <h1 className="text-3xl font-bold tracking-tight">
-              Production Planning
-            </h1>
-            <p className="text-muted-foreground">
-              Schedule and manage your recipe production.
-            </p>
-          </div>
-
-          <div className="space-x-4">
-            <Button
-              variant="outline"
-              onClick={() =>
-                toast.info("Load schedule functionality coming in step 3.5")
-              }
-            >
-              Load Schedule
-            </Button>
-            <Button onClick={handleCreatePlan}>
-              <Plus className="h-4 w-4 mr-1" />
-              Create Plan
-            </Button>
-          </div>
-        </div>
-
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-4">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="calendar">Calendar</TabsTrigger>
-            <TabsTrigger value="resources">Resources</TabsTrigger>
-          </TabsList>
+          <div className="flex justify-between items-center mb-4">
+            <TabsList>
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="calendar">Calendar</TabsTrigger>
+              <TabsTrigger value="resources">Resources</TabsTrigger>
+            </TabsList>
+
+            <div className="flex space-x-4">
+              <Button
+                variant="outline"
+                onClick={() =>
+                  toast.info("Load schedule functionality coming in step 3.5")
+                }
+              >
+                Load Schedule
+              </Button>
+              <Button onClick={handleCreatePlan}>
+                <Plus className="h-4 w-4 mr-1" />
+                Create Plan
+              </Button>
+            </div>
+          </div>
 
           <TabsContent value="overview" className="space-y-4">
             <div className="flex gap-6 h-[calc(100vh-220px)]">

@@ -124,8 +124,6 @@ const Index = () => {
   return (
     <Layout>
       <div className="flex flex-col h-[calc(100vh-56px)] overflow-hidden">
-        <h1 className="text-xl font-semibold mb-4">Dashboard</h1>
-        
         <div className="grid grid-cols-1 gap-6 flex-1 overflow-hidden">
           {/* Production Overview Graph - Full Width */}
           <Card className="hover-scale flex-shrink-0">
@@ -169,6 +167,7 @@ const Index = () => {
                           border: "none",
                           boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
                         }}
+                        cursor={{ fill: "transparent" }}
                       />
                       <Bar
                         dataKey="production"

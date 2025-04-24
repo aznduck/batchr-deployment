@@ -150,15 +150,6 @@ const Production = () => {
   return (
     <Layout>
       <div className="space-y-8">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold tracking-tight">
-            Production Tracking
-          </h1>
-          <p className="text-muted-foreground">
-            Log your daily production batches.
-          </p>
-        </div>
-
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="lg:col-span-1 hover-scale">
             <CardHeader>

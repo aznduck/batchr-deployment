@@ -158,6 +158,8 @@ const ProductionPlansList = () => {
   const [isAddBlockDialogOpen, setIsAddBlockDialogOpen] = useState(false);
   const [planBlocks, setPlanBlocks] = useState<any[]>([]);
   const [isLoadingBlocks, setIsLoadingBlocks] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [planToDelete, setPlanToDelete] = useState<ProductionPlan | null>(null);
 
   // Fetch production plans from API
   const fetchPlans = async () => {
@@ -328,13 +330,13 @@ const ProductionPlansList = () => {
                   <Button
                     variant="outline"
                     size="sm"
+                    className="text-red-500 hover:bg-red-50 hover:text-red-600"
                     onClick={() => {
-                      setSelectedPlan(plan);
-                      fetchPlanBlocks(plan._id);
-                      setIsViewPlanDialogOpen(true);
+                      setPlanToDelete(plan);
+                      setIsDeleteDialogOpen(true);
                     }}
                   >
-                    View
+                    Delete
                   </Button>
                 </div>
               </div>
@@ -666,6 +668,48 @@ const ProductionPlansList = () => {
             toast.success("Block added to plan successfully");
           }}
         />
+      )}
+
+      {/* Delete Plan Dialog */}
+      {planToDelete && (
+        <AlertDialog
+          open={isDeleteDialogOpen}
+          onOpenChange={setIsDeleteDialogOpen}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                Delete Production Plan
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete plan "{planToDelete.name}"? This
+                action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  productionPlansApi.delete(planToDelete._id)
+                    .then(() => {
+                      toast.success(`Production plan deleted successfully`);
+                      // Refresh the list of plans
+                      fetchPlans();
+                    })
+                    .catch((err) => {
+                      console.error("Error deleting plan:", err);
+                      toast.error(`Failed to delete production plan: ${err.message}`);
+                    });
+                }}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
     </div>
   );

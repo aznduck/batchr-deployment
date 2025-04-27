@@ -38,6 +38,7 @@ import {
   AccordionTrigger,
 } from "../ui/accordion";
 import { AddMachineDialog } from "./AddMachineDialog";
+import { EditMachineDialog } from "./EditMachineDialog";
 
 interface ResourceManagementPanelProps {
   className?: string;
@@ -51,7 +52,9 @@ export const ResourceManagementPanel: React.FC<
   const [isAddingMachine, setIsAddingMachine] = useState(false);
   const [isAddingEmployee, setIsAddingEmployee] = useState(false);
   const [isEditingEmployee, setIsEditingEmployee] = useState(false);
+  const [isEditingMachine, setIsEditingMachine] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [selectedMachine, setSelectedMachine] = useState<Machine | null>(null);
   const [machines, setMachines] = useState<Machine[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoading, setIsLoading] = useState({
@@ -179,6 +182,15 @@ export const ResourceManagementPanel: React.FC<
     toast.success(`Employee ${updatedEmployee.name} updated successfully`);
   };
 
+  const handleMachineUpdated = (updatedMachine: Machine) => {
+    setMachines((prev) =>
+      prev.map((machine) =>
+        machine._id === updatedMachine._id ? updatedMachine : machine
+      )
+    );
+    toast.success(`Machine ${updatedMachine.name} updated successfully`);
+  };
+
   const handleDeleteMachine = async (machineId: string) => {
     try {
       await machinesApi.delete(machineId);
@@ -285,40 +297,7 @@ export const ResourceManagementPanel: React.FC<
                       key={machine._id}
                       className="p-3 shadow-sm relative min-h-[140px]"
                     >
-                      <div className="absolute bottom-3 right-3">
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>
-                                Delete Machine
-                              </AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Are you sure you want to delete {machine.name}?
-                                This action cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => handleDeleteMachine(machine._id)}
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              >
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                      <div className="flex justify-between items-start">
+                      <div className="flex items-center justify-between">
                         <div>
                           <div className="font-medium flex items-center">
                             <Settings className="h-4 w-4 mr-1 text-muted-foreground" />
@@ -328,15 +307,116 @@ export const ResourceManagementPanel: React.FC<
                             Capacity: {machine.tubCapacity} tubs
                           </div>
                         </div>
-                        <Badge
-                          variant="outline"
-                          className={getMachineStatusColor(machine.status)}
-                        >
-                          <span className="flex items-center">
-                            {getMachineStatusIcon(machine.status)}
-                            <span className="ml-1">{machine.status}</span>
-                          </span>
-                        </Badge>
+                        
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            variant="outline"
+                            className={getMachineStatusColor(machine.status)}
+                          >
+                            <span className="flex items-center">
+                              {getMachineStatusIcon(machine.status)}
+                              <span className="ml-1">{machine.status}</span>
+                            </span>
+                          </Badge>
+                          
+                          <div className="relative">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 rounded-full"
+                              onClick={() => {
+                                const button = document.getElementById(`machine-menu-${machine._id}`);
+                                if (button) {
+                                  const isExpanded = button.getAttribute('aria-expanded') === 'true';
+                                  button.setAttribute('aria-expanded', isExpanded ? 'false' : 'true');
+                                  const menu = document.getElementById(`machine-dropdown-${machine._id}`);
+                                  if (menu) {
+                                    menu.style.display = isExpanded ? 'none' : 'block';
+                                  }
+                                }
+                              }}
+                              id={`machine-menu-${machine._id}`}
+                              aria-expanded="false"
+                              aria-haspopup="true"
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className="lucide lucide-more-vertical"
+                              >
+                                <circle cx="12" cy="12" r="1" />
+                                <circle cx="12" cy="5" r="1" />
+                                <circle cx="12" cy="19" r="1" />
+                              </svg>
+                            </Button>
+                            
+                            <div 
+                              id={`machine-dropdown-${machine._id}`}
+                              className="absolute right-0 mt-1 w-32 z-10 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 hidden"
+                            >
+                              <div className="py-1" role="menu" aria-orientation="vertical">
+                                <button
+                                  className="text-left w-full block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                  role="menuitem"
+                                  onClick={() => {
+                                    // Close the dropdown
+                                    const menu = document.getElementById(`machine-dropdown-${machine._id}`);
+                                    if (menu) menu.style.display = 'none';
+                                    
+                                    // Open the edit dialog
+                                    setSelectedMachine(machine);
+                                    setIsEditingMachine(true);
+                                  }}
+                                >
+                                  Edit
+                                </button>
+                                
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <button
+                                      className="text-left w-full block px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                                      role="menuitem"
+                                      onClick={() => {
+                                        // Close the dropdown
+                                        const menu = document.getElementById(`machine-dropdown-${machine._id}`);
+                                        if (menu) menu.style.display = 'none';
+                                      }}
+                                    >
+                                      Delete
+                                    </button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>
+                                        Delete Machine
+                                      </AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Are you sure you want to delete {machine.name}?
+                                        This action cannot be undone.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() => handleDeleteMachine(machine._id)}
+                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                      >
+                                        Delete
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                       </div>
 
                       {machine.notes && (
@@ -363,6 +443,12 @@ export const ResourceManagementPanel: React.FC<
                   open={isAddingMachine}
                   onOpenChange={setIsAddingMachine}
                   onMachineAdded={handleMachineAdded}
+                />
+                <EditMachineDialog
+                  open={isEditingMachine}
+                  onOpenChange={setIsEditingMachine}
+                  machine={selectedMachine}
+                  onMachineUpdated={handleMachineUpdated}
                 />
               </div>
             </ScrollArea>

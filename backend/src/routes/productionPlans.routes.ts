@@ -6,6 +6,7 @@ import { Document, Types } from "mongoose";
 import { Session } from "express-session";
 import * as fs from "fs";
 import * as path from "path";
+import axios from 'axios';
 
 const router = express.Router();
 
@@ -578,5 +579,102 @@ router.post(
     }
   }
 );
+
+// Calculate completion percentage for a production plan
+function calculatePlanCompletion(plan: any): void {
+  if (!plan.recipes || plan.recipes.length === 0) {
+    plan.completionStatus = 0;
+    return;
+  }
+  
+  let totalPlanned = 0;
+  let totalCompleted = 0;
+  
+  for (const recipe of plan.recipes) {
+    totalPlanned += recipe.plannedAmount || 0;
+    totalCompleted += recipe.completedAmount || 0;
+  }
+  
+  if (totalPlanned > 0) {
+    plan.completionStatus = Math.min(100, (totalCompleted / totalPlanned) * 100);
+  } else {
+    plan.completionStatus = 0;
+  }
+}
+
+// Update completed amount for a recipe in a plan
+async function updatePlanRecipeCompletion(
+  planId: Types.ObjectId,
+  recipeId: Types.ObjectId,
+  completedAmount: number,
+  userId: string
+) {
+  const plan = await ProductionPlan.findOne({
+    _id: planId,
+    owner: userId,
+  });
+
+  if (!plan) return;
+
+  const recipeIndex = plan.recipes.findIndex(
+    (r) => r.recipeId && r.recipeId.toString() === recipeId.toString()
+  );
+
+  if (recipeIndex !== -1) {
+    plan.recipes[recipeIndex].completedAmount += completedAmount;
+    
+    // Calculate overall plan completion
+    calculatePlanCompletion(plan);
+    
+    await plan.save();
+  }
+}
+
+// Generate production schedule route
+router.post("/:id/generate-schedule", ensureAuth, async (req: AuthedRequest, res: Response) => {
+  try {
+    const planId = req.params.id;
+    
+    // Check if plan exists
+    const plan = await ProductionPlan.findOne({
+      _id: planId,
+      owner: req.session.user!.id,
+    }).populate("recipes.recipeId");
+    
+    if (!plan) {
+      return res.status(404).json({ message: "Production plan not found" });
+    }
+    
+    // Forward request to the production scheduler API
+    // We're adding the planId to the request body
+    const scheduleOptions = {
+      ...req.body,
+      planId,
+      weekStartDate: plan.weekStartDate,
+      // Use recipes from plan if not provided in request
+      recipes: req.body.recipes || plan.recipes.map((r: any) => ({
+        recipeId: r.recipeId._id.toString(),
+        plannedAmount: r.plannedAmount
+      }))
+    };
+    
+    // Make a request to the scheduler service
+    // This is a separate endpoint to keep the logic modular
+    const response = await axios.post(
+      `http://localhost:${process.env.PORT}/api/production-scheduler/generate`,
+      scheduleOptions,
+      {
+        headers: {
+          'Cookie': req.headers.cookie // Forward session cookie for auth
+        }
+      }
+    );
+    
+    res.status(200).json(response.data);
+  } catch (err) {
+    console.error("Error generating production schedule:", err);
+    res.status(500).json({ message: "Error generating production schedule" });
+  }
+});
 
 export default router;

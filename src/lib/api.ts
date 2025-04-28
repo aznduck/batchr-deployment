@@ -1,4 +1,11 @@
 import { Ingredient, Recipe, Supplier } from "@/lib/data";
+import {
+  RecipeMachineYield,
+  RecipeMachineYieldCreateInput,
+  RecipeMachineYieldUpdateInput,
+  ScheduleGenerationOptions,
+  ScheduleGenerationResult,
+} from "./production";
 
 // Types
 export interface UserResponse {
@@ -104,9 +111,11 @@ export const ingredientsApi = {
 
 // Recipes API
 export const recipesApi = {
-  getAll: () => apiRequest<Recipe[]>("/recipes"),
+  getAll: () => apiRequest<Recipe[]>("/recipes", "GET"),
 
-  create: (data: {
+  getById: (id: string) => apiRequest<Recipe>(`/recipes/${id}`, "GET"),
+
+  create: async (data: {
     name: string;
     ingredients: {
       ingredientId: string;
@@ -131,6 +140,47 @@ export const recipesApi = {
   ) => apiRequest<Recipe>(`/recipes/${id}`, "PUT", updatedRecipe),
 
   delete: (id: string) => apiRequest<void>(`/recipes/${id}`, "DELETE"),
+};
+
+// Recipe Machine Yields API
+export const recipeMachineYieldsApi = {
+  getAll: () =>
+    apiRequest<RecipeMachineYield[]>("/recipe-machine-yields", "GET"),
+
+  getById: (id: string) =>
+    apiRequest<RecipeMachineYield>(`/recipe-machine-yields/${id}`, "GET"),
+
+  getByRecipe: (recipeId: string) =>
+    apiRequest<RecipeMachineYield[]>(
+      `/recipe-machine-yields/by-recipe/${recipeId}`,
+      "GET"
+    ),
+
+  getByMachine: (machineId: string) =>
+    apiRequest<RecipeMachineYield[]>(
+      `/recipe-machine-yields/by-machine/${machineId}`,
+      "GET"
+    ),
+
+  create: (data: RecipeMachineYieldCreateInput) =>
+    apiRequest<RecipeMachineYield>("/recipe-machine-yields", "POST", data),
+
+  update: (id: string, data: RecipeMachineYieldUpdateInput) =>
+    apiRequest<RecipeMachineYield>(`/recipe-machine-yields/${id}`, "PUT", data),
+
+  delete: (id: string) =>
+    apiRequest<void>(`/recipe-machine-yields/${id}`, "DELETE"),
+
+  calculateProductionTime: (
+    recipeId: string,
+    machineId: string,
+    tubsToMake: number
+  ) =>
+    apiRequest<{ minutes: number; batches: number }>(
+      `/recipe-machine-yields/calculate`,
+      "POST",
+      { recipeId, machineId, tubsToMake }
+    ),
 };
 
 // Production API
@@ -159,47 +209,51 @@ export const suppliersApi = {
 
 // Production Plans API
 export const productionPlansApi = {
-  getAll() {
-    return apiRequest("/production-plans");
-  },
-  getOne(id: string) {
-    return apiRequest(`/production-plans/${id}`);
-  },
-  create(data: {
+  getAll: () => apiRequest<any[]>("/production-plans"),
+
+  getById: (id: string) => apiRequest<any>(`/production-plans/${id}`),
+
+  create: (data: {
     name: string;
     weekStartDate: Date;
-    recipes?: { recipeId: string; plannedAmount: number }[];
     notes?: string;
-  }) {
-    return apiRequest("/production-plans", "POST", data);
-  },
-  update(
-    id: string,
-    data: {
-      name?: string;
-      notes?: string;
-      status?: string;
-      recipes?: { recipeId: string; plannedAmount: number }[];
-    }
-  ) {
-    return apiRequest(`/production-plans/${id}`, "PUT", data);
-  },
-  delete(id: string) {
-    return apiRequest(`/production-plans/${id}`, "DELETE");
-  },
-  complete(id: string) {
-    return apiRequest(`/production-plans/${id}/complete`, "PUT");
-  },
-  export(id: string) {
-    return apiRequest(`/production-plans/${id}/export`);
-  },
-  import(importData: any) {
-    return apiRequest("/production-plans/import", "POST", { importData });
-  },
+    recipes?: Array<{ recipeId: string; plannedAmount: number }>;
+  }) => apiRequest<any>("/production-plans", "POST", data),
+
+  update: (id: string, data: any) =>
+    apiRequest<any>(`/production-plans/${id}`, "PUT", data),
+
+  delete: (id: string) => apiRequest<void>(`/production-plans/${id}`, "DELETE"),
+
+  // Generate a production schedule for an existing plan
+  generateSchedule: (options: ScheduleGenerationOptions) =>
+    apiRequest<ScheduleGenerationResult>(
+      `/production-plans/${options.planId}/generate-schedule`,
+      "POST",
+      options
+    ),
+
+  // Add recipes to an existing plan
+  addRecipes: (
+    planId: string,
+    recipes: Array<{ recipeId: string; plannedAmount: number }>
+  ) =>
+    apiRequest<any>(`/production-plans/${planId}/recipes`, "PUT", { recipes }),
+
+  // Get production schedule for a specific plan
+  getSchedule: (planId: string) =>
+    apiRequest<any>(`/production-plans/${planId}/schedule`, "GET"),
+
   // Get all blocks associated with a production plan
-  getBlocks(planId: string) {
-    return apiRequest(`/production-plans/${planId}/blocks`);
-  },
+  getBlocks: (planId: string) =>
+    apiRequest<any>(`/production-plans/${planId}/blocks`, "GET"),
+
+  // For backward compatibility
+  getOne: (id: string) => apiRequest<any>(`/production-plans/${id}`, "GET"),
+
+  // Complete a production plan
+  complete: (id: string) =>
+    apiRequest<any>(`/production-plans/${id}/complete`, "PUT"),
 };
 
 // Production Blocks API

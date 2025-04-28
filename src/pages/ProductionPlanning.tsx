@@ -18,6 +18,7 @@ import {
   ChevronUp,
   Trash2, // Add X icon for delete buttons
   Loader2,
+  PlaneTakeoff,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -79,7 +80,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import ScheduleBuilder from "@/components/Planning/ScheduleBuilder";
-import AddProductionPlanDialog from "@/components/Planning/AddProductionPlanDialog";
+import EnhancedProductionPlanDialog from "@/components/Planning/EnhancedProductionPlanDialog";
 import {
   Table,
   TableBody,
@@ -392,16 +393,81 @@ const ProductionPlansList = () => {
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <h3 className="text-sm font-medium">Production Blocks</h3>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setIsAddBlockDialogOpen(true);
-                    }}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Block
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={async () => {
+                        try {
+                          // Configure schedule generation options
+                          const scheduleOptions = {
+                            includePrepBlocks: true,
+                            includeCleaningBlocks: true,
+                            prepDurationMinutes: 15,
+                            cleaningDurationMinutes: 15,
+                            workdayStartTime: "08:00",
+                            workdayEndTime: "17:00",
+                            workDays: [
+                              "Monday",
+                              "Tuesday",
+                              "Wednesday",
+                              "Thursday",
+                              "Friday",
+                            ],
+                          };
+
+                          // Generate production blocks using the scheduler API
+                          const result = await productionPlansApi.generateSchedule(
+                            {
+                              planId: selectedPlan._id,
+                              weekStartDate: selectedPlan.weekStartDate,
+                              recipes: selectedPlan.recipes.map((r) => ({
+                                recipeId: r.recipeId,
+                                plannedAmount: r.plannedAmount,
+                              })),
+                              ...scheduleOptions,
+                            }
+                          );
+
+                          if (result.success) {
+                            const blockCount = result.blocks?.length || 0;
+                            toast.success(`Generated ${blockCount} production blocks`);
+                            fetchPlanBlocks(selectedPlan._id);
+                            fetchPlans();
+                          } else {
+                            // Handle unscheduled recipes if any
+                            if (
+                              result.unscheduledRecipes &&
+                              result.unscheduledRecipes.length > 0
+                            ) {
+                              const recipeNames = result.unscheduledRecipes
+                                .map((r) => r.recipeName || "Unknown recipe")
+                                .join(", ");
+
+                              toast.warning(`Some recipes could not be scheduled: ${recipeNames}`);
+                            }
+                          }
+                        } catch (error) {
+                          console.error("Error generating schedule:", error);
+                          toast.error("Failed to generate production schedule");
+                        }
+                      }}
+                    >
+                      <PlaneTakeoff className="h-4 w-4 mr-2" />
+                      Generate Schedule
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setIsAddBlockDialogOpen(true);
+                      }}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Block
+                    </Button>
+                  </div>
                 </div>
 
                 {isLoadingBlocks ? (
@@ -824,7 +890,7 @@ const ProductionPlanning = () => {
       </div>
 
       {/* Add Production Plan Dialog */}
-      <AddProductionPlanDialog
+      <EnhancedProductionPlanDialog
         isOpen={isAddPlanDialogOpen}
         onClose={() => setIsAddPlanDialogOpen(false)}
         onPlanAdded={() => {

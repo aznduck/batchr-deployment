@@ -112,6 +112,73 @@ export interface ProductionBlockUpdateInput {
   actualQuantity?: number;
 }
 
+// Recipe-Machine Yield mapping
+export interface RecipeMachineYield {
+  _id: string;
+  recipeId: string;
+  machineId: string;
+  tubsPerBatch: number;
+  notes?: string;
+  createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+  
+  // Optional populated fields
+  recipe?: {
+    name: string;
+    _id: string;
+  };
+  machine?: {
+    name: string;
+    _id: string;
+    tubCapacity: number;
+    productionTime: number;
+  };
+}
+
+// Input for creating a recipe-machine yield
+export interface RecipeMachineYieldCreateInput {
+  recipeId: string;
+  machineId: string;
+  tubsPerBatch: number;
+  notes?: string;
+}
+
+// Input for updating a recipe-machine yield
+export interface RecipeMachineYieldUpdateInput {
+  tubsPerBatch?: number;
+  notes?: string;
+}
+
+// Options for generating a production schedule
+export interface ScheduleGenerationOptions {
+  planId: string;
+  weekStartDate: Date;
+  recipes: {
+    recipeId: string;
+    plannedAmount: number;
+  }[];
+  includePrepBlocks?: boolean;
+  includeCleaningBlocks?: boolean;
+  prepDurationMinutes?: number;
+  cleaningDurationMinutes?: number;
+  workdayStartTime?: string; // Format: "HH:MM"
+  workdayEndTime?: string;   // Format: "HH:MM"
+  workDays?: string[];       // Default: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+}
+
+// Production schedule generation result
+export interface ScheduleGenerationResult {
+  blocks: ProductionBlock[];
+  unscheduledRecipes?: {
+    recipeId: string;
+    remainingAmount: number;
+    recipeName?: string;
+  }[];
+  success: boolean;
+  message?: string;
+}
+
 // Time calculation result for production planning
 export interface TimeCalculation {
   productionMinutes: number;

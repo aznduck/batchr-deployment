@@ -15,6 +15,7 @@ import {
   format,
   isValid,
   getDay,
+  differenceInMinutes,
 } from "date-fns";
 
 const router = express.Router();
@@ -54,6 +55,7 @@ interface ScheduledBlock {
  */
 router.post("/generate", authenticateUser, async (req, res) => {
   try {
+    console.log("DEBUG: Starting generate function");
     // Default values for scheduling parameters
     const defaultOptions = {
       includePrepBlocks: true,
@@ -71,6 +73,8 @@ router.post("/generate", authenticateUser, async (req, res) => {
       ...req.body,
     };
 
+    console.log("DEBUG: Options:", options);
+
     // Validate plan exists
     const plan = await ProductionPlan.findOne({
       _id: options.planId,
@@ -81,10 +85,21 @@ router.post("/generate", authenticateUser, async (req, res) => {
       return res.status(404).json({ message: "Production plan not found" });
     }
 
+    console.log("DEBUG: Found production plan");
+
     // Get available machines
     const machines = await Machine.find({
       owner: req.session.user?.id,
       status: "available", // Only use available machines
+    });
+
+    console.log(`DEBUG: Found ${machines.length} available machines`);
+    machines.forEach((m, i) => {
+      console.log(
+        `DEBUG: Machine ${i + 1}: ID ${m._id}, name: ${m.name}, tubCapacity: ${
+          m.tubCapacity
+        }`
+      );
     });
 
     if (machines.length === 0) {
@@ -93,10 +108,17 @@ router.post("/generate", authenticateUser, async (req, res) => {
       });
     }
 
+    console.log("DEBUG: Found available machines");
+
     // Get available employees
     const employees = await Employee.find({
       owner: req.session.user?.id,
       active: true, // Only use active employees
+    });
+
+    console.log(`DEBUG: Found ${employees.length} available employees`);
+    employees.forEach((e, i) => {
+      console.log(`DEBUG: Employee ${i + 1}: ID ${e._id}, name: ${e.name}`);
     });
 
     if (employees.length === 0) {
@@ -104,6 +126,8 @@ router.post("/generate", authenticateUser, async (req, res) => {
         message: "No active employees found for scheduling",
       });
     }
+
+    console.log("DEBUG: Found available employees");
 
     // Load all recipe-machine yields for the requested recipes
     const recipeIds = options.recipes.map((r) => r.recipeId);
@@ -114,16 +138,22 @@ router.post("/generate", authenticateUser, async (req, res) => {
       machineId: { $in: machineIds },
     });
 
+    console.log(`DEBUG: Found ${recipeYields.length} recipe-machine yields`);
+
     // Load recipe details
     const recipes = await Recipe.find({
       _id: { $in: recipeIds },
       owner: req.session.user?.id,
     });
 
+    console.log(`DEBUG: Found ${recipes.length} recipes`);
+
     // Mapping for easier access
     const recipeMap = new Map(recipes.map((r) => [r._id.toString(), r]));
     const machineMap = new Map(machines.map((m) => [m._id.toString(), m]));
     const employeeMap = new Map(employees.map((e) => [e._id.toString(), e]));
+
+    console.log("DEBUG: Created maps for recipes, machines, and employees");
 
     // Schedule blocks
     const scheduledBlocks: ScheduledBlock[] = [];
@@ -133,12 +163,16 @@ router.post("/generate", authenticateUser, async (req, res) => {
       recipeName?: string;
     }[] = [];
 
+    console.log("DEBUG: Starting to schedule blocks");
+
     // Workday information
     const workdayStart = parseTimeString(options.workdayStartTime);
     const workdayEnd = parseTimeString(options.workdayEndTime);
     if (!workdayStart || !workdayEnd) {
       return res.status(400).json({ message: "Invalid workday time format" });
     }
+
+    console.log("DEBUG: Parsed workday start and end times");
 
     // Convert workDays strings to day numbers (0=Sunday, 1=Monday, etc.)
     const workDaysMap: Record<string, number> = {
@@ -153,8 +187,12 @@ router.post("/generate", authenticateUser, async (req, res) => {
 
     const workDayNumbers = options.workDays.map((day) => workDaysMap[day]);
 
+    console.log("DEBUG: Converted work days to day numbers");
+
     // Loop through each recipe and schedule production blocks
     for (const recipeRequest of options.recipes) {
+      console.log(`DEBUG: Scheduling recipe ${recipeRequest.recipeId}`);
+
       const { recipeId, plannedAmount } = recipeRequest;
 
       // Get recipe details
@@ -167,6 +205,8 @@ router.post("/generate", authenticateUser, async (req, res) => {
         });
         continue;
       }
+
+      console.log(`DEBUG: Found recipe ${recipeId}`);
 
       // Find the best machine for this recipe
       const bestMatch = findBestMachineForRecipe(
@@ -184,6 +224,8 @@ router.post("/generate", authenticateUser, async (req, res) => {
         continue;
       }
 
+      console.log(`DEBUG: Found best machine for recipe ${recipeId}`);
+
       const { machineId, tubsPerBatch, productionTimeMinutes } = bestMatch;
 
       // Calculate how many batches needed
@@ -197,6 +239,10 @@ router.post("/generate", authenticateUser, async (req, res) => {
         totalProductionMinutes +
         (options.includePrepBlocks ? options.prepDurationMinutes : 0) +
         (options.includeCleaningBlocks ? options.cleaningDurationMinutes : 0);
+
+      console.log(
+        `DEBUG: Calculated total block time needed for recipe ${recipeId}`
+      );
 
       // Find available time slots
       const availableSlots = findAvailableTimeSlots(
@@ -218,6 +264,8 @@ router.post("/generate", authenticateUser, async (req, res) => {
         });
         continue;
       }
+
+      console.log(`DEBUG: Found available time slots for recipe ${recipeId}`);
 
       // Use the first available slot
       const slot = availableSlots[0];
@@ -248,6 +296,8 @@ router.post("/generate", authenticateUser, async (req, res) => {
         currentTime = prepEndTime;
       }
 
+      console.log(`DEBUG: Created prep block for recipe ${recipeId}`);
+
       // Create production block
       const productionEndTime = addMinutes(currentTime, totalProductionMinutes);
 
@@ -269,6 +319,8 @@ router.post("/generate", authenticateUser, async (req, res) => {
       });
 
       currentTime = productionEndTime;
+
+      console.log(`DEBUG: Created production block for recipe ${recipeId}`);
 
       // Create cleaning block if requested
       if (options.includeCleaningBlocks) {
@@ -292,7 +344,11 @@ router.post("/generate", authenticateUser, async (req, res) => {
           planId: options.planId,
         });
       }
+
+      console.log(`DEBUG: Created cleaning block for recipe ${recipeId}`);
     }
+
+    console.log("DEBUG: Finished scheduling blocks");
 
     // Create the production blocks in the database
     const createdBlocks = [];
@@ -313,8 +369,12 @@ router.post("/generate", authenticateUser, async (req, res) => {
       plan.blocks.push(newBlock._id);
     }
 
+    console.log("DEBUG: Created production blocks in database");
+
     // Update the production plan with the blocks
     await plan.save();
+
+    console.log("DEBUG: Updated production plan");
 
     res.status(200).json({
       success: true,
@@ -358,18 +418,22 @@ function findBestMachineForRecipe(
     // No specific yield data found, use default values
     // Find machine with highest capacity
     if (machines.length === 0) return null;
-    
+
     // Sort machines by capacity for best fit
-    const sortedMachines = [...machines].sort((a, b) => b.tubCapacity - a.tubCapacity);
+    const sortedMachines = [...machines].sort(
+      (a, b) => b.tubCapacity - a.tubCapacity
+    );
     const bestMachine = sortedMachines[0];
-    
-    console.log(`No yield data found for recipe ${recipeId}, using default of 3 tubs per batch`);
-    
+
+    console.log(
+      `No yield data found for recipe ${recipeId}, using default of 3 tubs per batch`
+    );
+
     // As per user request, use default of 3 tubs per batch if no yield data
     return {
       machineId: bestMachine._id.toString(),
       tubsPerBatch: 3, // Default if no yield data - user requested 3 as default
-      productionTimeMinutes: bestMachine.productionTime
+      productionTimeMinutes: bestMachine.productionTime,
     };
   }
 
@@ -412,16 +476,38 @@ function findAvailableTimeSlots(
   scheduledBlocks: ScheduledBlock[],
   machineId: string
 ) {
+  console.log(
+    `DEBUG findAvailableTimeSlots: Looking for slots of ${requiredMinutes} minutes for machine ${machineId}`
+  );
+  console.log(
+    `DEBUG findAvailableTimeSlots: Week start date: ${weekStartDate}, work days: ${workDays}`
+  );
+  console.log(
+    `DEBUG findAvailableTimeSlots: Workday: ${workdayStartMinutes}-${workdayEndMinutes} minutes`
+  );
+  console.log(
+    `DEBUG findAvailableTimeSlots: Currently scheduled blocks: ${scheduledBlocks.length}`
+  );
+
   const availableSlots = [];
 
   // Go through each workday in the week
   for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
     const currentDate = addDays(new Date(weekStartDate), dayOffset);
     const dayOfWeek = getDay(currentDate);
+    console.log(
+      `DEBUG findAvailableTimeSlots: Checking day ${format(
+        currentDate,
+        "yyyy-MM-dd"
+      )} (day of week: ${dayOfWeek})`
+    );
 
     // Skip if not a work day
-    if (!workDays.includes(dayOfWeek)) continue;
-
+    if (!workDays.includes(dayOfWeek)) {
+      console.log(`DEBUG findAvailableTimeSlots: Skipping - not a work day`);
+      continue;
+    }
+    console.log(`DEBUG findAvailableTimeSlots: Valid work day found`);
     // Set the start and end times for this workday
     const dayStart = set(currentDate, {
       hours: Math.floor(workdayStartMinutes / 60),
@@ -449,68 +535,97 @@ function findAvailableTimeSlots(
     // Sort blocks by start time
     dayBlocks.sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
 
-    // Find gaps between blocks
-    let currentTime = dayStart;
+    // Sort blocked times for easier calculation
+    const blockedTimes = dayBlocks
+      .map((block) => ({
+        start: block.startTime,
+        end: block.endTime,
+      }))
+      .sort((a, b) => a.start.getTime() - b.start.getTime());
 
-    // Check if there's space before the first block
-    if (dayBlocks.length === 0) {
-      // No blocks yet, the whole day is available
-      const availableMinutes =
-        (dayEnd.getTime() - dayStart.getTime()) / (1000 * 60);
+    console.log(
+      `DEBUG findAvailableTimeSlots: Found ${blockedTimes.length} existing blocks for this day and machine`
+    );
+    blockedTimes.forEach((block, i) => {
+      console.log(
+        `DEBUG findAvailableTimeSlots: Block ${i + 1}: ${format(
+          block.start,
+          "HH:mm"
+        )} to ${format(block.end, "HH:mm")}`
+      );
+    });
 
-      if (availableMinutes >= requiredMinutes) {
-        availableSlots.push({
-          startTime: currentTime,
-          endTime: addMinutes(currentTime, requiredMinutes),
-          availableMinutes,
-        });
+    console.log(
+      `DEBUG findAvailableTimeSlots: Workday boundaries: ${format(
+        dayStart,
+        "HH:mm"
+      )} to ${format(dayEnd, "HH:mm")}`
+    );
+    console.log(
+      `DEBUG findAvailableTimeSlots: Need to find ${requiredMinutes} minutes of available time`
+    );
+
+    let availableStart = dayStart;
+
+    // Check for gaps between blocks
+    for (const block of blockedTimes) {
+      const gapMinutes = differenceInMinutes(block.start, availableStart);
+      console.log(
+        `DEBUG findAvailableTimeSlots: Gap of ${gapMinutes} minutes found between ${format(
+          availableStart,
+          "HH:mm"
+        )} and ${format(block.start, "HH:mm")}`
+      );
+
+      if (gapMinutes >= requiredMinutes) {
+        const slot = {
+          startTime: availableStart,
+          endTime: addMinutes(availableStart, requiredMinutes),
+          availableMinutes: gapMinutes,
+        };
+        console.log(
+          `DEBUG findAvailableTimeSlots: FOUND SLOT! ${format(
+            slot.startTime,
+            "HH:mm"
+          )} to ${format(slot.endTime, "HH:mm")}`
+        );
+        availableSlots.push(slot);
+      } else {
+        console.log(
+          `DEBUG findAvailableTimeSlots: Gap too small (${gapMinutes} min), need ${requiredMinutes} min`
+        );
       }
+
+      // Move the available start time to after this block
+      availableStart = block.end;
+    }
+
+    // Check for gap after the last block (or from the beginning if no blocks)
+    const remainingMinutes = differenceInMinutes(dayEnd, availableStart);
+    console.log(
+      `DEBUG findAvailableTimeSlots: Final gap of ${remainingMinutes} minutes from ${format(
+        availableStart,
+        "HH:mm"
+      )} to ${format(dayEnd, "HH:mm")}`
+    );
+
+    if (remainingMinutes >= requiredMinutes) {
+      const slot = {
+        startTime: availableStart,
+        endTime: addMinutes(availableStart, requiredMinutes),
+        availableMinutes: remainingMinutes,
+      };
+      console.log(
+        `DEBUG findAvailableTimeSlots: FOUND FINAL SLOT! ${format(
+          slot.startTime,
+          "HH:mm"
+        )} to ${format(slot.endTime, "HH:mm")}`
+      );
+      availableSlots.push(slot);
     } else {
-      // Check gap before first block
-      if (dayBlocks[0].startTime > currentTime) {
-        const availableMinutes =
-          (dayBlocks[0].startTime.getTime() - currentTime.getTime()) /
-          (1000 * 60);
-
-        if (availableMinutes >= requiredMinutes) {
-          availableSlots.push({
-            startTime: currentTime,
-            endTime: addMinutes(currentTime, requiredMinutes),
-            availableMinutes,
-          });
-        }
-      }
-
-      // Check gaps between blocks
-      for (let i = 0; i < dayBlocks.length - 1; i++) {
-        const gapStart = dayBlocks[i].endTime;
-        const gapEnd = dayBlocks[i + 1].startTime;
-        const availableMinutes =
-          (gapEnd.getTime() - gapStart.getTime()) / (1000 * 60);
-
-        if (availableMinutes >= requiredMinutes) {
-          availableSlots.push({
-            startTime: gapStart,
-            endTime: addMinutes(gapStart, requiredMinutes),
-            availableMinutes,
-          });
-        }
-      }
-
-      // Check gap after last block
-      const lastBlock = dayBlocks[dayBlocks.length - 1];
-      if (lastBlock.endTime < dayEnd) {
-        const availableMinutes =
-          (dayEnd.getTime() - lastBlock.endTime.getTime()) / (1000 * 60);
-
-        if (availableMinutes >= requiredMinutes) {
-          availableSlots.push({
-            startTime: lastBlock.endTime,
-            endTime: addMinutes(lastBlock.endTime, requiredMinutes),
-            availableMinutes,
-          });
-        }
-      }
+      console.log(
+        `DEBUG findAvailableTimeSlots: Final gap too small (${remainingMinutes} min), need ${requiredMinutes} min`
+      );
     }
   }
 

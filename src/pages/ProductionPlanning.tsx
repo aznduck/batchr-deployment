@@ -390,6 +390,82 @@ const ProductionPlansList = () => {
                 </div>
               </div>
 
+              {/* Recipe Details Section */}
+              <div className="mt-4">
+                <h3 className="text-sm font-medium mb-2">Recipe Details</h3>
+                <div className="border rounded-md overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted">
+                      <tr>
+                        <th className="py-2 px-3 text-left">Recipe</th>
+                        <th className="py-2 px-3 text-right">Planned</th>
+                        <th className="py-2 px-3 text-right">Completed</th>
+                        <th className="py-2 px-3 text-right">Progress</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedPlan.recipes && selectedPlan.recipes.length > 0 ? (
+                        selectedPlan.recipes.map((recipe, index) => {
+                          // Safely extract recipe name
+                          let recipeName = "Recipe " + (index + 1);
+                          if (recipe.recipeId) {
+                            if (typeof recipe.recipeId === 'object' && recipe.recipeId !== null) {
+                              // When fully populated object
+                              recipeName = 'name' in recipe.recipeId ? String(recipe.recipeId.name) : recipeName;
+                            } else {
+                              // When just ID string
+                              recipeName = `Recipe ID: ${String(recipe.recipeId).substring(0, 6)}...`;
+                            }
+                          }
+                          
+                          // Get amounts with defaults
+                          const plannedAmount = recipe.plannedAmount || 0;
+                          const completedAmount = recipe.completedAmount || 0;
+                          
+                          // Calculate progress percentage
+                          const progressPercent = plannedAmount > 0 
+                            ? Math.min(100, Math.round((completedAmount / plannedAmount) * 100))
+                            : 0;
+                            
+                          return (
+                            <tr key={index} className={index % 2 === 1 ? "bg-muted/30" : ""}>
+                              <td className="py-2 px-3">
+                                {recipeName}
+                              </td>
+                              <td className="py-2 px-3 text-right">
+                                {plannedAmount} tubs
+                              </td>
+                              <td className="py-2 px-3 text-right">
+                                {completedAmount} tubs
+                              </td>
+                              <td className="py-2 px-3 text-right">
+                                {plannedAmount > 0 ? (
+                                  <div className="flex items-center justify-end">
+                                    <div className="w-16 bg-muted rounded-full h-2 mr-2 overflow-hidden">
+                                      <div 
+                                        className="bg-primary h-full"
+                                        style={{ width: `${progressPercent}%` }}
+                                      />
+                                    </div>
+                                    <span>{progressPercent}%</span>
+                                  </div>
+                                ) : "N/A"}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      ) : (
+                        <tr>
+                          <td colSpan={4} className="py-3 px-3 text-center text-muted-foreground">
+                            No recipes in this plan
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <h3 className="text-sm font-medium">Production Blocks</h3>

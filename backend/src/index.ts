@@ -13,7 +13,7 @@ import machinesRoutes from "./routes/machines.routes";
 import recipesRoutes from "./routes/recipes.routes";
 import productionPlansRoutes from "./routes/productionPlans.routes";
 import productionBlocksRoutes from "./routes/productionBlocks.routes";
-import recipeMachineYieldsRoutes from "./routes/recipeMachineYields";
+import recipeMachineYieldsRoutes from "./routes/recipeMachineYields.routes";
 import productionSchedulerRoutes from "./routes/productionScheduler";
 import User from "./models/User";
 import { seedAdminData } from "./utils/seedAdminData";

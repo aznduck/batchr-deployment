@@ -416,6 +416,9 @@ const ProductionPlansList = () => {
                               // When just ID string
                               recipeName = `Recipe ID: ${String(recipe.recipeId).substring(0, 6)}...`;
                             }
+                          } else {
+                            // Handle null recipeId case
+                            recipeName = `Unnamed Recipe ${index + 1}`;
                           }
                           
                           // Get amounts with defaults

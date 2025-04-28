@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Recipe, Ingredient } from "@/lib/data";
 import { AddRecipeModal } from "@/components/Recipe/AddRecipeModal";
+import { RecipeYieldDialog } from "@/components/Recipe/RecipeYieldDialog";
 import { recipesApi, ingredientsApi } from "@/lib/api";
 
 // Custom loading spinner component with reliable animation
@@ -24,6 +25,8 @@ const Recipes = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
+  const [yieldDialogOpen, setYieldDialogOpen] = useState(false);
+  const [selectedRecipeForYield, setSelectedRecipeForYield] = useState<{id: string, name: string} | null>(null);
   const [refreshIngredientsKey, setRefreshIngredientsKey] = useState(0);
   const [isLoading, setIsLoading] = useState({
     recipes: false,
@@ -130,6 +133,14 @@ const Recipes = () => {
 
   const handleRefreshIngredients = () => {
     setRefreshIngredientsKey((prev) => prev + 1);
+  };
+
+  const handleOpenYieldDialog = (recipe: Recipe) => {
+    setSelectedRecipeForYield({
+      id: recipe._id,
+      name: recipe.name
+    });
+    setYieldDialogOpen(true);
   };
 
   // Filter recipes based on search term
@@ -253,6 +264,7 @@ const Recipes = () => {
                     ingredients={ingredients}
                     onEdit={() => setEditingRecipe(recipe)}
                     onDelete={() => handleDeleteRecipe(recipe)}
+                    onOpenYieldDialog={() => handleOpenYieldDialog(recipe)}
                     className="h-[400px]"
                   />
                 ))
@@ -272,6 +284,11 @@ const Recipes = () => {
         availableIngredients={ingredients}
         editingRecipe={editingRecipe}
         onRefreshIngredients={handleRefreshIngredients}
+      />
+      <RecipeYieldDialog
+        open={yieldDialogOpen}
+        onOpenChange={(open) => setYieldDialogOpen(open)}
+        recipe={selectedRecipeForYield}
       />
     </Layout>
   );

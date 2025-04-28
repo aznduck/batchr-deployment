@@ -25,7 +25,7 @@ interface ScheduleGenerationOptions {
   planId: string;
   weekStartDate: Date;
   recipes: {
-    recipeId: string;
+    recipeId: string | { _id?: string; id?: string };
     plannedAmount: number;
   }[];
   includePrepBlocks: boolean;
@@ -130,7 +130,13 @@ router.post("/generate", authenticateUser, async (req, res) => {
     console.log("DEBUG: Found available employees");
 
     // Load all recipe-machine yields for the requested recipes
-    const recipeIds = options.recipes.map((r) => r.recipeId);
+    const recipeIds = options.recipes.map((r) => {
+      if (typeof r.recipeId === "object") {
+        return r.recipeId._id || r.recipeId.id;
+      } else {
+        return r.recipeId;
+      }
+    });
     const machineIds = machines.map((m) => m._id.toString());
 
     const recipeYields = await RecipeMachineYield.find({
@@ -191,40 +197,85 @@ router.post("/generate", authenticateUser, async (req, res) => {
 
     // Loop through each recipe and schedule production blocks
     for (const recipeRequest of options.recipes) {
-      console.log(`DEBUG: Scheduling recipe ${recipeRequest.recipeId}`);
+      console.log(
+        `DEBUG: Scheduling recipe type: ${typeof recipeRequest.recipeId}`
+      );
+
+      if (
+        recipeRequest.recipeId &&
+        typeof recipeRequest.recipeId === "object"
+      ) {
+        try {
+          console.log(
+            `DEBUG: Recipe ID is an object:`,
+            JSON.stringify(recipeRequest.recipeId)
+          );
+        } catch (error) {
+          console.log(
+            `DEBUG: Recipe ID is an object but couldn't stringify it`
+          );
+        }
+      }
 
       const { recipeId, plannedAmount } = recipeRequest;
 
+      // Extract the string ID if recipeId is an object
+      let recipeIdString: string | null = null;
+
+      if (recipeId) {
+        if (typeof recipeId === "object" && recipeId !== null) {
+          // Check if it has _id property (MongoDB/Mongoose document)
+          const recipeObject = recipeId as any;
+          if (recipeObject._id) {
+            recipeIdString = recipeObject._id.toString();
+            console.log(
+              `DEBUG: Extracted recipe ID from object: ${recipeIdString}`
+            );
+          } else if (recipeObject.id) {
+            recipeIdString = recipeObject.id.toString();
+            console.log(
+              `DEBUG: Extracted recipe ID from object using id: ${recipeIdString}`
+            );
+          }
+        } else {
+          // It's already a string ID
+          recipeIdString = recipeId.toString();
+          console.log(
+            `DEBUG: Recipe ID is already a string: ${recipeIdString}`
+          );
+        }
+      } else {
+        console.log(`DEBUG: Recipe ID is null or undefined`);
+      }
+
       // Get recipe details
-      const recipe = recipeMap.get(recipeId);
+      const recipe = recipeIdString ? recipeMap.get(recipeIdString) : null;
       if (!recipe) {
         unscheduledRecipes.push({
-          recipeId,
+          recipeId: recipeIdString || "", // Use empty string as fallback
           remainingAmount: plannedAmount,
           recipeName: "Unknown Recipe",
         });
         continue;
       }
 
-      console.log(`DEBUG: Found recipe ${recipeId}`);
+      console.log(`DEBUG: Found recipe ${recipeIdString}`);
 
-      // Find the best machine for this recipe
-      const bestMatch = findBestMachineForRecipe(
-        recipeId,
-        recipeYields,
-        machines
-      );
+      // Find the best machine for this recipe - only call if we have a valid string ID
+      const bestMatch = recipeIdString
+        ? findBestMachineForRecipe(recipeIdString, recipeYields, machines)
+        : null;
 
       if (!bestMatch) {
         unscheduledRecipes.push({
-          recipeId,
+          recipeId: recipeIdString || "", // Use empty string as fallback
           remainingAmount: plannedAmount,
           recipeName: recipe.name,
         });
         continue;
       }
 
-      console.log(`DEBUG: Found best machine for recipe ${recipeId}`);
+      console.log(`DEBUG: Found best machine for recipe ${recipeIdString}`);
 
       const { machineId, tubsPerBatch, productionTimeMinutes } = bestMatch;
 
@@ -241,7 +292,7 @@ router.post("/generate", authenticateUser, async (req, res) => {
         (options.includeCleaningBlocks ? options.cleaningDurationMinutes : 0);
 
       console.log(
-        `DEBUG: Calculated total block time needed for recipe ${recipeId}`
+        `DEBUG: Calculated total block time needed for recipe ${recipeIdString}`
       );
 
       // Find available time slots
@@ -258,14 +309,16 @@ router.post("/generate", authenticateUser, async (req, res) => {
       if (availableSlots.length === 0) {
         // Couldn't schedule this recipe
         unscheduledRecipes.push({
-          recipeId,
+          recipeId: recipeIdString || "", // Use empty string as fallback
           remainingAmount: plannedAmount,
           recipeName: recipe.name,
         });
         continue;
       }
 
-      console.log(`DEBUG: Found available time slots for recipe ${recipeId}`);
+      console.log(
+        `DEBUG: Found available time slots for recipe ${recipeIdString}`
+      );
 
       // Use the first available slot
       const slot = availableSlots[0];
@@ -296,7 +349,7 @@ router.post("/generate", authenticateUser, async (req, res) => {
         currentTime = prepEndTime;
       }
 
-      console.log(`DEBUG: Created prep block for recipe ${recipeId}`);
+      console.log(`DEBUG: Created prep block for recipe ${recipeIdString}`);
 
       // Create production block
       const productionEndTime = addMinutes(currentTime, totalProductionMinutes);
@@ -313,14 +366,16 @@ router.post("/generate", authenticateUser, async (req, res) => {
           currentTime,
           productionEndTime
         ),
-        recipeId,
+        recipeId: recipeIdString || "", // Use empty string as fallback
         quantity: plannedAmount,
         planId: options.planId,
       });
 
       currentTime = productionEndTime;
 
-      console.log(`DEBUG: Created production block for recipe ${recipeId}`);
+      console.log(
+        `DEBUG: Created production block for recipe ${recipeIdString}`
+      );
 
       // Create cleaning block if requested
       if (options.includeCleaningBlocks) {
@@ -345,7 +400,7 @@ router.post("/generate", authenticateUser, async (req, res) => {
         });
       }
 
-      console.log(`DEBUG: Created cleaning block for recipe ${recipeId}`);
+      console.log(`DEBUG: Created cleaning block for recipe ${recipeIdString}`);
     }
 
     console.log("DEBUG: Finished scheduling blocks");
@@ -411,13 +466,44 @@ function findBestMachineForRecipe(
   yields: any[],
   machines: any[]
 ) {
-  // Get all yields for this recipe
-  const recipeYields = yields.filter((y) => y.recipeId.toString() === recipeId);
+  console.log(
+    `DEBUG findBestMachineForRecipe: Finding best machine for recipe ${recipeId}`
+  );
+  console.log(
+    `DEBUG findBestMachineForRecipe: Available machines: ${machines.length}`
+  );
+  console.log(
+    `DEBUG findBestMachineForRecipe: Available yields: ${yields.length}`
+  );
 
-  if (recipeYields.length === 0) {
+  // Get all yields for this recipe
+  const recipeYields = yields.filter((y) => {
+    try {
+      return y.recipeId && y.recipeId.toString() === recipeId;
+    } catch (error) {
+      console.log(
+        `DEBUG findBestMachineForRecipe: Error comparing yield recipe ID: ${error}`
+      );
+      return false;
+    }
+  });
+
+  console.log(
+    `DEBUG findBestMachineForRecipe: Found ${recipeYields.length} yields for this recipe`
+  );
+
+  // If no recipe yields OR if recipeId is null/undefined, use default approach
+  if (recipeYields.length === 0 || !recipeId) {
+    console.log(
+      `DEBUG findBestMachineForRecipe: No specific yield data found, using defaults`
+    );
+
     // No specific yield data found, use default values
     // Find machine with highest capacity
-    if (machines.length === 0) return null;
+    if (machines.length === 0) {
+      console.log(`DEBUG findBestMachineForRecipe: No machines available`);
+      return null;
+    }
 
     // Sort machines by capacity for best fit
     const sortedMachines = [...machines].sort(
@@ -426,14 +512,14 @@ function findBestMachineForRecipe(
     const bestMachine = sortedMachines[0];
 
     console.log(
-      `No yield data found for recipe ${recipeId}, using default of 3 tubs per batch`
+      `DEBUG findBestMachineForRecipe: Selected machine ${bestMachine._id} with capacity ${bestMachine.tubCapacity}, using default of 3 tubs per batch`
     );
 
     // As per user request, use default of 3 tubs per batch if no yield data
     return {
       machineId: bestMachine._id.toString(),
       tubsPerBatch: 3, // Default if no yield data - user requested 3 as default
-      productionTimeMinutes: bestMachine.productionTime,
+      productionTimeMinutes: bestMachine.productionTime || 60, // Default to 60 minutes if not specified
     };
   }
 
@@ -441,27 +527,88 @@ function findBestMachineForRecipe(
   let bestMatch = null;
   let highestEfficiency = 0;
 
+  console.log(
+    `DEBUG findBestMachineForRecipe: Evaluating ${recipeYields.length} yield records`
+  );
+
   for (const yieldItem of recipeYields) {
+    console.log(
+      `DEBUG findBestMachineForRecipe: Checking yield for machine ${yieldItem.machineId} with ${yieldItem.tubsPerBatch} tubs per batch`
+    );
+
     const machine = machines.find(
       (m) => m._id.toString() === yieldItem.machineId.toString()
     );
 
-    if (!machine) continue;
+    if (!machine) {
+      console.log(
+        `DEBUG findBestMachineForRecipe: Machine not found or not available`
+      );
+      continue;
+    }
 
-    // Check if machine has enough capacity for this recipe's yield
-    if (machine.tubCapacity < yieldItem.tubsPerBatch) continue;
+    console.log(
+      `DEBUG findBestMachineForRecipe: Found matching machine ${machine.name} with capacity ${machine.tubCapacity}`
+    );
 
-    const efficiency = yieldItem.tubsPerBatch / machine.productionTime;
+    // More lenient check - as long as machine has some capacity, we can use it
+    // Just cap the tubs per batch to the machine's capacity if needed
+    const effectiveTubsPerBatch = Math.min(
+      yieldItem.tubsPerBatch,
+      machine.tubCapacity
+    );
+    const productionTime = machine.productionTime || 60; // Default to 60 minutes if not specified
+
+    const efficiency = effectiveTubsPerBatch / productionTime;
+
+    console.log(
+      `DEBUG findBestMachineForRecipe: Calculated efficiency: ${efficiency} (${effectiveTubsPerBatch} tubs / ${productionTime} minutes)`
+    );
 
     if (efficiency > highestEfficiency) {
+      console.log(`DEBUG findBestMachineForRecipe: New best match found!`);
       highestEfficiency = efficiency;
       bestMatch = {
         machineId: machine._id.toString(),
-        tubsPerBatch: yieldItem.tubsPerBatch,
-        productionTimeMinutes: machine.productionTime,
+        tubsPerBatch: effectiveTubsPerBatch,
+        productionTimeMinutes: productionTime,
       };
     }
   }
+
+  // If no match found from yields, use most efficient machine as fallback
+  if (!bestMatch && machines.length > 0) {
+    console.log(
+      `DEBUG findBestMachineForRecipe: No yield match found, using fallback to best available machine`
+    );
+
+    // Calculate efficiency as capacity/time
+    const machinesWithEfficiency = machines.map((machine) => ({
+      machine,
+      efficiency: machine.tubCapacity / (machine.productionTime || 60),
+    }));
+
+    // Sort by efficiency (highest first)
+    machinesWithEfficiency.sort((a, b) => b.efficiency - a.efficiency);
+
+    const bestMachine = machinesWithEfficiency[0].machine;
+
+    console.log(
+      `DEBUG findBestMachineForRecipe: Selected fallback machine ${bestMachine.name}`
+    );
+
+    bestMatch = {
+      machineId: bestMachine._id.toString(),
+      tubsPerBatch: Math.min(3, bestMachine.tubCapacity), // Use default 3 or machine capacity, whichever is smaller
+      productionTimeMinutes: bestMachine.productionTime || 60,
+    };
+  }
+
+  console.log(
+    `DEBUG findBestMachineForRecipe: Final result: ${
+      bestMatch ? "Match found" : "No match found"
+    }`
+  );
 
   return bestMatch;
 }

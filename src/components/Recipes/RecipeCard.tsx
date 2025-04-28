@@ -26,6 +26,7 @@ interface RecipeCardProps {
   ingredients: Ingredient[];
   onEdit?: (recipe: Recipe) => void;
   onDelete?: (recipe: Recipe) => void;
+  onOpenYieldDialog?: (recipe: Recipe) => void;
 }
 
 export const RecipeCard: React.FC<RecipeCardProps> = ({
@@ -34,6 +35,7 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
   ingredients,
   onEdit,
   onDelete,
+  onOpenYieldDialog,
 }) => {
   const [flipped, setFlipped] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -42,9 +44,10 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
     setFlipped(!flipped);
   };
 
-  const handleEdit = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onEdit?.(recipe);
+  const handleEdit = () => {
+    if (onEdit) {
+      onEdit(recipe);
+    }
   };
 
   const handleDeleteClick = (e: React.MouseEvent) => {
@@ -92,14 +95,27 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
                 {recipe.name}
               </CardTitle>
               <div className="flex space-x-1">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={`h-8 w-8 text-${color}-foreground/70 hover:text-${color}-foreground hover:bg-${color}/60`}
-                  onClick={handleEdit}
-                >
-                  <Edit size={16} />
-                </Button>
+                {onEdit && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleEdit}
+                    className="text-blue-600 hover:text-blue-800 hover:bg-blue-100"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                )}
+                {onOpenYieldDialog && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onOpenYieldDialog(recipe)}
+                    className="text-amber-600 hover:text-amber-800 hover:bg-amber-100"
+                    title="Manage Machine Yields"
+                  >
+                    <History className="w-4 h-4" />
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="icon"
@@ -204,14 +220,27 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
                 <span className="text-base font-normal">History</span>
               </CardTitle>
               <div className="flex space-x-1">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={`h-8 w-8 text-${color}-foreground/70 hover:text-${color}-foreground hover:bg-${color}/60`}
-                  onClick={handleEdit}
-                >
-                  <Edit size={16} />
-                </Button>
+                {onEdit && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleEdit}
+                    className="text-blue-600 hover:text-blue-800 hover:bg-blue-100"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                )}
+                {onOpenYieldDialog && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onOpenYieldDialog(recipe)}
+                    className="text-amber-600 hover:text-amber-800 hover:bg-amber-100"
+                    title="Manage Machine Yields"
+                  >
+                    <History className="w-4 h-4" />
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="icon"

@@ -168,7 +168,6 @@ export const SideNav: React.FC = () => {
               </div>
               <div className="flex flex-col overflow-hidden">
                 <span className="text-sm font-medium truncate">{username}</span>
-                <span className="text-xs text-muted-foreground">Logged in</span>
               </div>
             </div>
 

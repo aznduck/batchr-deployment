@@ -34,6 +34,8 @@ interface AddRecipeModalProps {
   onAddRecipe: (values: {
     name: string;
     ingredients: RecipeIngredient[];
+    currentInventory: number;
+    weeklyProductionGoal: number;
   }) => void;
   availableIngredients: Ingredient[];
   editingRecipe?: Recipe | null;
@@ -53,6 +55,8 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
   const [searchQueries, setSearchQueries] = useState<string[]>([]);
   const [showIngredientModal, setShowIngredientModal] = useState(false);
   const [refreshIngredients, setRefreshIngredients] = useState(false);
+  const [currentInventory, setCurrentInventory] = useState<number>(0);
+  const [weeklyProductionGoal, setWeeklyProductionGoal] = useState<number>(0);
 
   // Reset form when opening modal or switching recipes
   useEffect(() => {
@@ -74,10 +78,14 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
       }
       setIngredients(uniqueIngredients);
       setSearchQueries(new Array(uniqueIngredients.length).fill(""));
+      setCurrentInventory(editingRecipe.currentInventory || 0);
+      setWeeklyProductionGoal(editingRecipe.weeklyProductionGoal || 0);
     } else {
       setName("");
       setIngredients([]);
       setSearchQueries([]);
+      setCurrentInventory(0);
+      setWeeklyProductionGoal(0);
     }
   }, [editingRecipe, open]);
 
@@ -181,6 +189,8 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
         ...ing,
         amount: parseFloat(ing.amount.toString()),
       })),
+      currentInventory: parseFloat(currentInventory.toString()),
+      weeklyProductionGoal: parseFloat(weeklyProductionGoal.toString()),
     });
     onOpenChange(false);
   };
@@ -225,6 +235,34 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
                 onChange={(e) => setName(e.target.value)}
                 className="col-span-3"
                 required
+              />
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="inventory" className="text-right">
+                Current Inventory (tubs)
+              </Label>
+              <Input
+                id="inventory"
+                type="number"
+                value={currentInventory}
+                onChange={(e) => setCurrentInventory(Number(e.target.value))}
+                className="col-span-3"
+              />
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="weeklyGoal" className="text-right">
+                Weekly Production Goal (tubs)
+              </Label>
+              <Input
+                id="weeklyGoal"
+                type="number"
+                min="0"
+                step="0.1"
+                value={weeklyProductionGoal}
+                onChange={(e) => setWeeklyProductionGoal(Number(e.target.value))}
+                className="col-span-3"
               />
             </div>
 

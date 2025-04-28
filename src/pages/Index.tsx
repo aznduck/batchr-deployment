@@ -132,7 +132,6 @@ const Index = () => {
                 <BarChart size={18} className="text-primary" />
                 Production Overview
               </CardTitle>
-              <CardDescription>Total production by flavor</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-[250px] w-full">

@@ -112,11 +112,51 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
             </div>
           </CardHeader>
           <CardContent className="pb-2">
-            <h4
-              className={`text-sm font-medium mb-2 text-${color}-foreground/80`}
-            >
-              Ingredients
-            </h4>
+            <div className="flex justify-between items-center mb-3">
+              <h4 className={`text-sm font-medium text-${color}-foreground/80`}>
+                Ingredients
+              </h4>
+              <div className="flex items-center gap-2">
+                <Badge
+                  variant="outline"
+                  className={`text-xs ${
+                    (recipe.currentInventory || 0) > 0
+                      ? "bg-green-50 text-green-700 border-green-200"
+                      : "bg-amber-50 text-amber-700 border-amber-200"
+                  }`}
+                  title="Current Inventory"
+                >
+                  <span className="flex items-center">
+                    <span className="mr-1">📦</span>
+                    {recipe.currentInventory?.toFixed(1) || "0"}
+                  </span>
+                </Badge>
+                {(recipe.plannedProduction || 0) > 0 && (
+                  <Badge
+                    variant="outline"
+                    className="text-xs bg-blue-50 text-blue-700 border-blue-200"
+                    title="Planned Production"
+                  >
+                    <span className="flex items-center">
+                      <span className="mr-1">🔄</span>
+                      {recipe.plannedProduction?.toFixed(1) || "0"}
+                    </span>
+                  </Badge>
+                )}
+                {(recipe.weeklyProductionGoal || 0) > 0 && (
+                  <Badge
+                    variant="outline"
+                    className="text-xs bg-purple-50 text-purple-700 border-purple-200"
+                    title="Weekly Goal"
+                  >
+                    <span className="flex items-center">
+                      <span className="mr-1">🎯</span>
+                      {recipe.weeklyProductionGoal?.toFixed(1) || "0"}
+                    </span>
+                  </Badge>
+                )}
+              </div>
+            </div>
             <ul className="space-y-1 text-sm">
               {recipe.ingredients.map((item) => {
                 const ingredient = ingredients.find(

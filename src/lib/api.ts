@@ -112,18 +112,23 @@ export const recipesApi = {
       ingredientId: string;
       amount: number;
     }[];
+    currentInventory?: number;
+    weeklyProductionGoal?: number;
   }) => apiRequest<Recipe>("/recipes", "POST", data),
 
-  update: (
+  update: async (
     id: string,
-    data: {
+    updatedRecipe: {
       name: string;
       ingredients: {
         ingredientId: string;
         amount: number;
       }[];
+      currentInventory?: number;
+      weeklyProductionGoal?: number;
+      plannedProduction?: number;
     }
-  ) => apiRequest<Recipe>(`/recipes/${id}`, "PUT", data),
+  ) => apiRequest<Recipe>(`/recipes/${id}`, "PUT", updatedRecipe),
 
   delete: (id: string) => apiRequest<void>(`/recipes/${id}`, "DELETE"),
 };

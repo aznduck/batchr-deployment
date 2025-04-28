@@ -22,14 +22,14 @@ const RecipeSchema = new mongoose.Schema(
       min: 0,
       get: (v: number) => parseFloat(v.toFixed(2)),
     },
-    // Weekly production goal in tubs
+    // Weekly production goal in tubs (target amount needed each week)
     weeklyProductionGoal: {
       type: Number,
       default: 0,
       min: 0,
       get: (v: number) => parseFloat(v.toFixed(2)),
     },
-    // Planned production amount in tubs
+    // Planned production amount in tubs (what's currently planned to be produced)
     plannedProduction: {
       type: Number,
       default: 0,

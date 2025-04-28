@@ -92,6 +92,11 @@ router.post("/", authenticateUser, async (req, res) => {
       });
     }
 
+    // Update recipe current inventory
+    await Recipe.findByIdAndUpdate(recipeId, {
+      $inc: { currentInventory: quantity }
+    });
+
     res.status(201).json(production);
   } catch (err) {
     console.error("Failed to add production log:", err);

@@ -242,15 +242,16 @@ router.put("/:id/inventory", ensureAuth, async (req: AuthedRequest, res: Respons
 // Update recipe production goals
 router.put("/:id/goals", ensureAuth, async (req: AuthedRequest, res: Response) => {
   try {
-    const { weeklyProductionGoal } = req.body;
+    const { weeklyProductionGoal, plannedProduction } = req.body;
     
     // Validate input
-    if (weeklyProductionGoal === undefined || isNaN(weeklyProductionGoal) || weeklyProductionGoal < 0) {
-      return res.status(400).json({ message: "Invalid production goal value" });
+    if ((weeklyProductionGoal !== undefined && (isNaN(weeklyProductionGoal) || weeklyProductionGoal < 0)) || 
+        (plannedProduction !== undefined && (isNaN(plannedProduction) || plannedProduction < 0))) {
+      return res.status(400).json({ message: "Invalid production goal values" });
     }
     
-    // Find the current recipe to get the old value
-    const currentRecipe = await Recipe.findOne({ 
+    // Get the current recipe for history
+    const currentRecipe = await Recipe.findOne({
       _id: req.params.id,
       owner: req.session.user!.id
     });
@@ -259,24 +260,42 @@ router.put("/:id/goals", ensureAuth, async (req: AuthedRequest, res: Response) =
       return res.status(404).json({ message: "Recipe not found" });
     }
     
-    // Update the recipe production goal
+    // Prepare update object
+    const updateObj: any = {
+      lastModifiedBy: req.session.user!.id,
+      lastModifiedAt: new Date()
+    };
+    
+    // Add changes to version history
+    const changes: Record<string, { previous: any; new: any }> = {};
+    
+    if (weeklyProductionGoal !== undefined) {
+      updateObj.weeklyProductionGoal = weeklyProductionGoal;
+      changes.weeklyProductionGoal = {
+        previous: currentRecipe.weeklyProductionGoal,
+        new: weeklyProductionGoal
+      };
+    }
+    
+    if (plannedProduction !== undefined) {
+      updateObj.plannedProduction = plannedProduction;
+      changes.plannedProduction = {
+        previous: currentRecipe.plannedProduction,
+        new: plannedProduction
+      };
+    }
+    
+    // Update recipe with production goals
     const recipe = await Recipe.findOneAndUpdate(
       { _id: req.params.id, owner: req.session.user!.id },
       { 
-        weeklyProductionGoal,
-        lastModifiedBy: req.session.user!.id,
-        lastModifiedAt: new Date(),
+        ...updateObj,
         $push: { 
           versionHistory: {
             modifiedBy: req.session.user!.id,
             modifiedAt: new Date(),
-            changes: { 
-              weeklyProductionGoal: { 
-                previous: currentRecipe.weeklyProductionGoal, 
-                new: weeklyProductionGoal 
-              }
-            },
-            notes: 'Production goal updated'
+            changes,
+            notes: 'Production goals updated'
           }
         }
       },

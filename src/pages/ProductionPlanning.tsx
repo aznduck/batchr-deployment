@@ -678,21 +678,18 @@ const ProductionPlansList = () => {
         >
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>
-                Delete Production Plan
-              </AlertDialogTitle>
+              <AlertDialogTitle>Delete Production Plan</AlertDialogTitle>
               <AlertDialogDescription>
                 Are you sure you want to delete plan "{planToDelete.name}"? This
                 action cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>
-                Cancel
-              </AlertDialogCancel>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => {
-                  productionPlansApi.delete(planToDelete._id)
+                  productionPlansApi
+                    .delete(planToDelete._id)
                     .then(() => {
                       toast.success(`Production plan deleted successfully`);
                       // Refresh the list of plans
@@ -700,7 +697,9 @@ const ProductionPlansList = () => {
                     })
                     .catch((err) => {
                       console.error("Error deleting plan:", err);
-                      toast.error(`Failed to delete production plan: ${err.message}`);
+                      toast.error(
+                        `Failed to delete production plan: ${err.message}`
+                      );
                     });
                 }}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
@@ -799,7 +798,6 @@ const ProductionPlanning = () => {
           <TabsContent value="calendar" className="space-y-4">
             <div className="p-4">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-semibold">Production Calendar</h2>
                 <Button onClick={() => setIsAddBlockDialogOpen(true)}>
                   <Plus className="h-4 w-4 mr-1" />
                   Add Block

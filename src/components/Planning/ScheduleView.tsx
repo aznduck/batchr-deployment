@@ -91,37 +91,6 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
 
   return (
     <Card className="h-full">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-primary" />
-            <span>Production Schedule</span>
-          </div>
-          {selectedDate && (
-            <Badge variant="outline" className="ml-auto">
-              {format(selectedDate, "MMMM d, yyyy")}
-            </Badge>
-          )}
-        </CardTitle>
-      </CardHeader>
-      <div className="px-4 pb-2 flex flex-wrap items-center gap-2 text-xs">
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-sm bg-blue-100 border border-blue-300"></div>
-          <span>Prep</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-sm bg-green-100 border border-green-300"></div>
-          <span>Production</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-sm bg-purple-100 border border-purple-300"></div>
-          <span>Cleaning</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-sm bg-orange-100 border border-orange-300"></div>
-          <span>Other</span>
-        </div>
-      </div>
       <CardContent className="p-0 flex-1 flex flex-col">
         <Tabs defaultValue="calendar" className="flex-1 flex flex-col">
           <div className="px-4 border-b"></div>

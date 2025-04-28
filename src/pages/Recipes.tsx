@@ -86,33 +86,34 @@ const Recipes = () => {
   const handleAddRecipe = async (values: {
     name: string;
     ingredients: { ingredientId: string; amount: number }[];
+    currentInventory: number;
+    weeklyProductionGoal: number;
   }) => {
     try {
-      const newRecipe = await recipesApi.create(values);
-      setRecipes([...recipes, newRecipe]);
-      toast.success("Recipe added successfully!");
-    } catch (error) {
-      console.error("Error adding recipe:", error);
-      toast.error("Failed to add recipe");
-    }
-  };
-
-  const handleEditRecipe = async (values: {
-    name: string;
-    ingredients: { ingredientId: string; amount: number }[];
-  }) => {
-    if (!editingRecipe) return;
-
-    try {
-      const updatedRecipe = await recipesApi.update(editingRecipe._id, values);
-      setRecipes(
-        recipes.map((r) => (r._id === updatedRecipe._id ? updatedRecipe : r))
-      );
-      toast.success("Recipe updated successfully!");
+      if (editingRecipe) {
+        // Update existing recipe
+        await recipesApi.update(editingRecipe._id, values);
+        toast.success(`Recipe ${values.name} updated successfully`);
+        
+        // Update local state
+        setRecipes((prevRecipes) =>
+          prevRecipes.map((recipe) =>
+            recipe._id === editingRecipe._id
+              ? { ...recipe, ...values }
+              : recipe
+          )
+        );
+      } else {
+        // Create new recipe
+        const newRecipe = await recipesApi.create(values);
+        setRecipes((prevRecipes) => [...prevRecipes, newRecipe]);
+        toast.success(`Recipe ${values.name} added successfully`);
+      }
+      
       setEditingRecipe(null);
     } catch (error) {
-      console.error("Error updating recipe:", error);
-      toast.error("Failed to update recipe");
+      console.error("Error adding/updating recipe:", error);
+      toast.error("Failed to save recipe");
     }
   };
 
@@ -267,7 +268,7 @@ const Recipes = () => {
           setAddModalOpen(open);
           if (!open) setEditingRecipe(null);
         }}
-        onAddRecipe={editingRecipe ? handleEditRecipe : handleAddRecipe}
+        onAddRecipe={handleAddRecipe}
         availableIngredients={ingredients}
         editingRecipe={editingRecipe}
         onRefreshIngredients={handleRefreshIngredients}

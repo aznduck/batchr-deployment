@@ -13,6 +13,7 @@ import machinesRoutes from "./routes/machines.routes";
 import recipesRoutes from "./routes/recipes.routes";
 import productionPlansRoutes from "./routes/productionPlans.routes";
 import productionBlocksRoutes from "./routes/productionBlocks.routes";
+import recipeMachineYieldsRoutes from "./routes/recipeMachineYields";
 import User from "./models/User";
 import { seedAdminData } from "./utils/seedAdminData";
 
@@ -105,6 +106,7 @@ app.use("/api/machines", machinesRoutes);
 app.use("/api/recipes", recipesRoutes);
 app.use("/api/production-plans", productionPlansRoutes);
 app.use("/api/production-blocks", productionBlocksRoutes);
+app.use("/api/recipe-machine-yields", recipeMachineYieldsRoutes);
 
 mongoose
   .connect(process.env.MONGO_URI!)
